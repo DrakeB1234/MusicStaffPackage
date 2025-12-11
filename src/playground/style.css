@@ -1,0 +1,44 @@
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font: rgba(26, 24, 39);
+  background-color: #f1eded;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+  padding: 0;
+}
+
+p {
+  font-size: 1rem;
+  color: var(--font);
+}
+
+body {
+  margin: 0;
+  background-color: var(background-color);
+  padding: 0.5rem;
+}
+
+.staff-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #ccc;
+}
+
+#staff-root {
+  padding: 4px;
+  border: 1px solid #ff000038;
+}
