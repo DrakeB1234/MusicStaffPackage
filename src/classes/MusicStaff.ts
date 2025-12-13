@@ -99,7 +99,7 @@ export default class MusicStaff {
   }
 
   // Handles drawing the glyphs to internal group, applies the xPositioning to this.noteCursorX
-  private renderNote(note: NoteObj, ySpacing: number): SVGGElement {
+  private renderNote(note: NoteObj, ySpacing: number, previousXPos?: number): SVGGElement {
     const noteGroup = this.rendererInstance.createGroup("note");
     let noteFlip = false;
 
@@ -136,7 +136,7 @@ export default class MusicStaff {
         break;
     }
     // If accidental, add its offset
-    this.noteCursorX += xOffset;
+    if (!previousXPos) this.noteCursorX += xOffset;
 
     // Strategy returns coords of expected ledger lines, this class will handle drawing them.
     const ledgerLines = this.strategyInstance.getLedgerLinesX({
@@ -149,8 +149,17 @@ export default class MusicStaff {
     })
 
     // Apply positioning to note group container
-    noteGroup.setAttribute("transform", `translate(${this.noteCursorX}, ${ySpacing})`);
-    this.noteCursorX += NOTE_SPACING;
+    noteGroup.setAttribute("transform", `translate(${previousXPos ?? this.noteCursorX}, ${ySpacing})`);
+
+    // Add note to entries, then increment spacing.
+    this.noteEntries.push({
+      gElement: noteGroup,
+      note: note,
+      yPos: ySpacing,
+      xPos: previousXPos ?? this.noteCursorX
+    });
+
+    if (!previousXPos) this.noteCursorX += NOTE_SPACING;
 
     return noteGroup;
   }
@@ -175,13 +184,6 @@ export default class MusicStaff {
       });
       const noteGroup = this.renderNote(noteObj, yPos);
 
-      this.noteEntries.push({
-        gElement: noteGroup,
-        note: noteObj,
-        yPos: yPos,
-        xPos: this.noteCursorX
-      });
-
       noteGroups.push(noteGroup);
     }
 
@@ -202,8 +204,33 @@ export default class MusicStaff {
       return;
     }
     this.noteEntries.forEach((e) => {
+      console.log(e.gElement, e.xPos)
       e.gElement.setAttribute("transform", `translate(${cursorX}, ${e.yPos})`);
       cursorX += noteSpacing;
     });
+  }
+
+  changeNoteByIndex(note: string, noteIndex: number) {
+    if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
+    const noteObj: NoteObj = parsedNoteString(note);
+    const noteEntry = this.noteEntries[noteIndex];
+    const newNoteYPos = this.strategyInstance.calculateNoteYPos({
+      name: noteObj.name,
+      octave: noteObj.octave
+    });
+
+    // Remove previous note elements then render new one in same x positioning
+    noteEntry.gElement.remove();
+    const noteGroup = this.renderNote(noteObj, newNoteYPos, noteEntry.xPos);
+
+    // Replace in place old entry with new
+    this.noteEntries[noteIndex] = {
+      gElement: noteGroup,
+      note: noteObj,
+      xPos: noteEntry.xPos,
+      yPos: newNoteYPos
+    };
+
+    this.rendererInstance.commitElementsToDOM(noteGroup, this.rendererInstance.getLayerByName("notes"));
   }
 }

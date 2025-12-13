@@ -60,6 +60,7 @@ const elements = {
 
 // Event Listeners
 elements.testButtonGrand?.addEventListener("click", () => {
+  musicStaffGrand.changeNoteByIndex("C#4", 0);
   musicStaffGrand.justifyNotes();
 });
 elements.testButtonTreble?.addEventListener("click", () => {
