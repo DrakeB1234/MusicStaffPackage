@@ -45,10 +45,26 @@ const musicStaffAlto = new MusicStaff(altoRoot, {
   spaceBelow: 1,
 });
 
-musicStaffGrand.drawNote(["c#5e", "b#4e", "a#4e", "c#4e", "a#3e", "d#3e", "c#3e"]);
+musicStaffGrand.drawNote(["c#5w", "b#4e", "a#4e", "c#4e", "a#3e", "d#3e", "c#3e"]);
 musicStaffTreble.drawNote(["c4e", "b4e", "a5e"]);
 musicStaffBass.drawNote(["C4w", "D3w", "C3w"]);
 musicStaffAlto.drawNote(["C4w", "G4w", "F3w"]);
+
+function addErrorClassToNote() {
+  musicStaffGrand.applyClassToNoteByIndex("error-note", 0);
+
+  setTimeout(() => {
+    musicStaffGrand.removeClassToNoteByIndex("error-note", 1);
+  }, 1000);
+};
+
+function toggleWrongNoteUI(note: string, index: number) {
+  musicStaffGrand.showWrongNoteUIByNoteIndex(note, index);
+
+  setTimeout(() => {
+    musicStaffGrand.hideWrongNoteUI();
+  }, 1000);
+};
 
 // Index Elements
 const elements = {
@@ -60,8 +76,7 @@ const elements = {
 
 // Event Listeners
 elements.testButtonGrand?.addEventListener("click", () => {
-  musicStaffGrand.changeNoteByIndex("C#4", 0);
-  musicStaffGrand.justifyNotes();
+  toggleWrongNoteUI("D4", 0);
 });
 elements.testButtonTreble?.addEventListener("click", () => {
   musicStaffTreble.justifyNotes();

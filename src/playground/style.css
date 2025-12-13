@@ -31,17 +31,6 @@ body {
   padding: 0.5rem;
 }
 
-.staffs-container {
-  display: grid;
-  place-items: center;
-  gap: 2rem;
-  border: 1px solid #ccc;
-}
-
-[id^="staff-root"] {
-  border: 1px solid #008cff79;
-}
-
 .controls {
   display: flex;
   justify-content: center;
@@ -57,4 +46,24 @@ button {
   padding: 0.5rem 1rem;
   cursor: pointer;
   word-break: break-all;
+}
+
+.staffs-container {
+  display: grid;
+  place-items: center;
+  gap: 2rem;
+  border: 1px solid #ccc;
+}
+
+[id^="staff-root"] {
+  border: 1px solid #008cff79;
+}
+
+.wrong-note-ui {
+  color: transparent;
+  transition: color 0.2s ease-in;
+}
+
+.wrong-note-ui.show {
+  color: rgba(255, 0, 0, 0.558);
 }

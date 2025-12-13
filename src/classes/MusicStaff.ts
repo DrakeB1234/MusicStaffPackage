@@ -33,6 +33,8 @@ export default class MusicStaff {
   private noteEntries: NoteEntry[] = [];
   private noteCursorX: number = 0;
 
+  private wrongNoteGroupUi: SVGGElement | null = null;
+
   constructor(rootElementCtx: HTMLElement, options?: MusicStaffOptions) {
     this.options = {
       width: 300,
@@ -135,8 +137,6 @@ export default class MusicStaff {
         xOffset -= ACCIDENTAL_OFFSET_X;
         break;
     }
-    // If accidental, add its offset
-    if (!previousXPos) this.noteCursorX += xOffset;
 
     // Strategy returns coords of expected ledger lines, this class will handle drawing them.
     const ledgerLines = this.strategyInstance.getLedgerLinesX({
@@ -146,21 +146,27 @@ export default class MusicStaff {
     }, ySpacing);
     ledgerLines.forEach(e => {
       this.rendererInstance.drawLine(e.x1, e.yPos, e.x2, e.yPos, noteGroup);
-    })
+    });
+
+    // If this value was provided, then a note is being replaced, so don't update cursor and use last X Pos of note
+    if (previousXPos) {
+      console.log(previousXPos)
+      noteGroup.setAttribute("transform", `translate(${previousXPos}, ${ySpacing})`);
+      return noteGroup;
+    }
 
     // Apply positioning to note group container
-    noteGroup.setAttribute("transform", `translate(${previousXPos ?? this.noteCursorX}, ${ySpacing})`);
+    noteGroup.setAttribute("transform", `translate(${this.noteCursorX + xOffset}, ${ySpacing})`);
 
     // Add note to entries, then increment spacing.
     this.noteEntries.push({
       gElement: noteGroup,
       note: note,
       yPos: ySpacing,
-      xPos: previousXPos ?? this.noteCursorX
+      xPos: this.noteCursorX + xOffset
     });
 
-    if (!previousXPos) this.noteCursorX += NOTE_SPACING;
-
+    this.noteCursorX += NOTE_SPACING + xOffset;
     return noteGroup;
   }
 
@@ -232,5 +238,53 @@ export default class MusicStaff {
     };
 
     this.rendererInstance.commitElementsToDOM(noteGroup, this.rendererInstance.getLayerByName("notes"));
+  };
+
+  applyClassToNoteByIndex(className: string, noteIndex: number) {
+    if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
+    const noteEntry = this.noteEntries[noteIndex];
+
+    noteEntry.gElement.classList.add(className);
+  }
+
+  removeClassToNoteByIndex(className: string, noteIndex: number) {
+    if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
+    const noteEntry = this.noteEntries[noteIndex];
+
+    noteEntry.gElement.classList.remove(className);
+  }
+
+  // Class applied is wrong-note, which can be css selected
+  showWrongNoteUIByNoteIndex(note: string, noteIndex: number) {
+    if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
+    const noteObj = parsedNoteString(note);
+    const ySpacing = this.strategyInstance.calculateNoteYPos({
+      name: noteObj.name,
+      octave: noteObj.octave
+    });
+
+    const noteEntry = this.noteEntries[noteIndex];
+    const uiLayer = this.rendererInstance.getLayerByName("ui");
+
+    // If wrong note g doesn't exist, then create it
+    if (!this.wrongNoteGroupUi) {
+      const group = this.rendererInstance.createGroup("wrong-note-ui");
+      this.rendererInstance.drawGlyph("NOTE_HEAD_QUARTER", group);
+      group.setAttribute("transform", `translate(${noteEntry.xPos + NOTE_LAYER_START_X}, ${ySpacing})`);
+      this.wrongNoteGroupUi = group;
+
+      this.wrongNoteGroupUi.classList.add("show");
+      this.rendererInstance.commitElementsToDOM(group, uiLayer);
+    }
+    else {
+      this.wrongNoteGroupUi.classList.add("show");
+      this.wrongNoteGroupUi.setAttribute("transform", `translate(${noteEntry.xPos + NOTE_LAYER_START_X}, ${ySpacing})`);
+    }
+  };
+
+  hideWrongNoteUI() {
+    if (!this.wrongNoteGroupUi) throw new Error("Wrong note UI was never created, so it cannot be hidden.");
+
+    this.wrongNoteGroupUi.classList.remove("show");
   }
 }
