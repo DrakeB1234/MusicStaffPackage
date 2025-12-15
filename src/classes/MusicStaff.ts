@@ -100,7 +100,7 @@ export default class MusicStaff {
     }
   }
 
-  // Handles drawing the glyphs to internal group, applies the xPositioning to this.noteCursorX
+  // Handles drawing the glyphs to internal group, applies the xPositioning to note Cursor X
   private renderNote(note: NoteObj, ySpacing: number, previousXPos?: number): SVGGElement {
     const noteGroup = this.rendererInstance.createGroup("note");
     let noteFlip = false;
@@ -149,8 +149,7 @@ export default class MusicStaff {
     });
 
     // If this value was provided, then a note is being replaced, so don't update cursor and use last X Pos of note
-    if (previousXPos) {
-      console.log(previousXPos)
+    if (previousXPos !== undefined) {
       noteGroup.setAttribute("transform", `translate(${previousXPos}, ${ySpacing})`);
       return noteGroup;
     }
@@ -241,15 +240,25 @@ export default class MusicStaff {
       octave: noteObj.octave
     });
 
+    // Determermines new offset based off the previous note diff in accidental to the new note
+    let accidentalXPosOffset = 0;
+    if (noteEntry.note.accidental && !noteObj.accidental) {
+      console.log("here")
+      accidentalXPosOffset = ACCIDENTAL_OFFSET_X;
+    }
+    else if (!noteEntry.note.accidental && noteObj.accidental) {
+      accidentalXPosOffset = -ACCIDENTAL_OFFSET_X;
+    }
+
     // Remove previous note elements then render new one in same x positioning
     noteEntry.gElement.remove();
-    const noteGroup = this.renderNote(noteObj, newNoteYPos, noteEntry.xPos);
+    const noteGroup = this.renderNote(noteObj, newNoteYPos, noteEntry.xPos + accidentalXPosOffset);
 
     // Replace in place old entry with new
     this.noteEntries[noteIndex] = {
       gElement: noteGroup,
       note: noteObj,
-      xPos: noteEntry.xPos,
+      xPos: noteEntry.xPos + accidentalXPosOffset,
       yPos: newNoteYPos
     };
 

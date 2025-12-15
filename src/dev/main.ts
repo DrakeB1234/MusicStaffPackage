@@ -1,6 +1,6 @@
 import MusicStaff from '../classes/MusicStaff';
 import RhythmStaff from '../classes/RhythmStaff';
-import './style.css'
+import './style.css';
 
 const grandRoot = document.getElementById("staff-root-grand");
 const trebleRoot = document.getElementById("staff-root-treble");
@@ -11,6 +11,11 @@ const rhythmRoot = document.getElementById("staff-root-rhythm");
 
 if (!trebleRoot || !bassRoot || !grandRoot || !altoRoot || !rhythmRoot) {
   throw new Error("Required DOM elements not found.");
+};
+
+type SelectedStaff = {
+  element: HTMLElement;
+  staff: MusicStaff | RhythmStaff;
 }
 
 // Class Testing
@@ -19,8 +24,8 @@ const musicStaffGrand = new MusicStaff(grandRoot, {
   staffType: "grand",
   width: 350,
   scale: 1.2,
-  // staffColor: "#f2f4ff",
-  // staffBackgroundColor: "#2f3040",
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
   spaceAbove: 0,
   spaceBelow: 3
 });
@@ -28,6 +33,8 @@ const musicStaffGrand = new MusicStaff(grandRoot, {
 const musicStaffTreble = new MusicStaff(trebleRoot, {
   width: 350,
   scale: 1.2,
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
   staffType: "treble",
   spaceBelow: 1
 });
@@ -35,6 +42,8 @@ const musicStaffTreble = new MusicStaff(trebleRoot, {
 const musicStaffBass = new MusicStaff(bassRoot, {
   width: 350,
   scale: 1.2,
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
   staffType: "bass",
   spaceAbove: 2,
   spaceBelow: 0,
@@ -43,6 +52,8 @@ const musicStaffBass = new MusicStaff(bassRoot, {
 const musicStaffAlto = new MusicStaff(altoRoot, {
   width: 350,
   scale: 1.2,
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
   staffType: "alto",
   spaceAbove: 1,
   spaceBelow: 1,
@@ -51,58 +62,36 @@ const musicStaffAlto = new MusicStaff(altoRoot, {
 const rhythmStaff = new RhythmStaff(rhythmRoot, {
   width: 350,
   scale: 1.2,
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
   topNumber: 4,
   spaceAbove: 0,
   spaceBelow: 0,
 });
+
+let selectedStaff: SelectedStaff = {
+  element: grandRoot,
+  staff: musicStaffGrand
+};
+
+selectedStaff.element.classList.add("show");
 
 musicStaffGrand.drawNote(["c#5w", "b#4e", "a#4e", "c#4e", "a#3e", "d#3e", "c#3e"]);
 musicStaffTreble.drawNote(["c4e", "b4e", "a5e"]);
 musicStaffBass.drawNote(["C4w", "D3w", "C3w"]);
 musicStaffAlto.drawNote(["C4w", "G4w", "F3w"]);
 
-function toggleWrongNoteUI(staff: string, note: string, index: number) {
-  switch (staff) {
-    case "grand":
-      musicStaffGrand.showWrongNoteUIByNoteIndex(note, index);
-      break;
-    case "treble":
-      musicStaffTreble.showWrongNoteUIByNoteIndex(note, index);
-      break;
-    case "bass":
-      musicStaffBass.showWrongNoteUIByNoteIndex(note, index);
-      break;
-    case "alto":
-      musicStaffAlto.showWrongNoteUIByNoteIndex(note, index);
-      break;
-  };
-
-  setTimeout(() => {
-    switch (staff) {
-      case "grand":
-        musicStaffGrand.hideWrongNoteUI();
-        break;
-      case "treble":
-        musicStaffTreble.hideWrongNoteUI();
-        break;
-      case "bass":
-        musicStaffBass.hideWrongNoteUI();
-        break;
-      case "alto":
-        musicStaffAlto.hideWrongNoteUI();
-        break;
-    };
-  }, 1000);
-};
-
 // Index Elements
 const elements = {
   buttonDrawNotes: document.getElementById("button-draw") as HTMLButtonElement,
   buttonDrawBeamNotes: document.getElementById("button-draw-beam") as HTMLButtonElement,
   buttonDrawRests: document.getElementById("button-draw-rest") as HTMLButtonElement,
+  buttonChangeNote: document.getElementById("button-change-note") as HTMLButtonElement,
   buttonJustifyNotes: document.getElementById("button-justify") as HTMLButtonElement,
   buttonErrorNote: document.getElementById("button-error") as HTMLButtonElement,
   buttonClearNotes: document.getElementById("button-clear") as HTMLButtonElement,
+
+  buttonThemeToggle: document.getElementById("button-theme-toggle") as HTMLButtonElement,
 
   inputStaff: document.getElementById("input-select-staff") as HTMLSelectElement,
   inputNoteIndex: document.getElementById("input-number-index") as HTMLInputElement,
@@ -110,32 +99,42 @@ const elements = {
 }
 
 // Event Listeners
-elements.buttonDrawNotes?.addEventListener("click", () => {
+elements.buttonThemeToggle?.addEventListener("click", () => {
+  const root = document.documentElement;
+  const theme = root.getAttribute("data-theme");
+
+  if (theme === "dark") {
+    root.setAttribute("data-theme", "light");
+  }
+  else {
+    root.setAttribute("data-theme", "dark");
+  }
+});
+
+elements.buttonChangeNote.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof RhythmStaff) return;
+
+  const noteIndexRawValue = elements.inputNoteIndex.value;
+  const noteIndex = Number(noteIndexRawValue);
+  if (typeof noteIndex !== "number") return;
   const notesRawString = elements.inputNotes.value;
-  const staffRawString = elements.inputStaff.value;
-  // if (!notesRawString) return;
+  if (!notesRawString) return;
   const noteParts = notesRawString.split("/");
 
-  switch (staffRawString) {
-    case "grand":
-      musicStaffGrand.drawNote(noteParts);
-      break;
-    case "treble":
-      musicStaffTreble.drawNote(noteParts);
-      break;
-    case "bass":
-      musicStaffBass.drawNote(noteParts);
-      break;
-    case "alto":
-      musicStaffAlto.drawNote(noteParts);
-      break;
-    case "rhythm":
-      rhythmStaff.drawNote(noteParts);
-      break;
-  };
+  selectedStaff.staff.changeNoteByIndex(noteParts[0], noteIndex);
+})
+
+elements.buttonDrawNotes?.addEventListener("click", () => {
+  const notesRawString = elements.inputNotes.value;
+  if (!notesRawString) return;
+  const noteParts = notesRawString.split("/");
+
+  selectedStaff.staff.drawNote(noteParts);
 });
 
 elements.buttonDrawBeamNotes.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof MusicStaff) return;
+
   const noteIndexRawValue = elements.inputNoteIndex.value;
   const noteIndex = Number(noteIndexRawValue);
   if (typeof noteIndex !== "number" || noteIndex < 1) return;
@@ -143,6 +142,8 @@ elements.buttonDrawBeamNotes.addEventListener("click", () => {
 });
 
 elements.buttonDrawRests.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof MusicStaff) return;
+
   const notesRawString = elements.inputNotes.value;
   if (!notesRawString) return;
   const noteParts = notesRawString.split("/");
@@ -151,25 +152,14 @@ elements.buttonDrawRests.addEventListener("click", () => {
 });
 
 elements.buttonJustifyNotes?.addEventListener("click", () => {
-  const staffRawString = elements.inputStaff.value;
+  if (selectedStaff.staff instanceof RhythmStaff) return;
 
-  switch (staffRawString) {
-    case "grand":
-      musicStaffGrand.justifyNotes();
-      break;
-    case "treble":
-      musicStaffTreble.justifyNotes();
-      break;
-    case "bass":
-      musicStaffBass.justifyNotes();
-      break;
-    case "alto":
-      musicStaffAlto.justifyNotes();
-      break;
-  };
+  selectedStaff.staff.justifyNotes();
 });
 
 elements.buttonErrorNote?.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof RhythmStaff) return;
+
   const noteIndexRawValue = elements.inputNoteIndex.value;
   const noteIndex = Number(noteIndexRawValue);
   if (typeof noteIndex !== "number") return;
@@ -177,29 +167,55 @@ elements.buttonErrorNote?.addEventListener("click", () => {
   if (!notesRawString) return;
   const noteParts = notesRawString.split("/");
 
-  const staffRawString = elements.inputStaff.value;
+  selectedStaff.staff.showWrongNoteUIByNoteIndex(noteParts[0], noteIndex);
 
-  toggleWrongNoteUI(staffRawString, noteParts[0], noteIndex);
+  setTimeout(() => {
+    if (selectedStaff.staff instanceof RhythmStaff) return;
+    selectedStaff.staff.hideWrongNoteUI();
+  }, 1000);
 });
 
 elements.buttonClearNotes?.addEventListener("click", () => {
-  const staffRawString = elements.inputStaff.value;
+  selectedStaff.staff.clearAllNotes();
+});
 
-  switch (staffRawString) {
+elements.inputStaff.addEventListener("change", (e: Event) => {
+  const target = e.target as HTMLSelectElement;
+  const value = target.value;
+  selectedStaff.element.classList.remove('show');
+
+  switch (value) {
     case "grand":
-      musicStaffGrand.clearAllNotes();
+      selectedStaff = {
+        element: grandRoot,
+        staff: musicStaffGrand
+      }
       break;
     case "treble":
-      musicStaffTreble.clearAllNotes();
+      selectedStaff = {
+        element: trebleRoot,
+        staff: musicStaffTreble
+      }
       break;
     case "bass":
-      musicStaffBass.clearAllNotes();
+      selectedStaff = {
+        element: bassRoot,
+        staff: musicStaffBass
+      }
       break;
     case "alto":
-      musicStaffAlto.clearAllNotes();
+      selectedStaff = {
+        element: altoRoot,
+        staff: musicStaffAlto
+      }
       break;
     case "rhythm":
-      rhythmStaff.clearAllNotes();
+      selectedStaff = {
+        element: rhythmRoot,
+        staff: rhythmStaff
+      }
       break;
   };
+
+  selectedStaff.element.classList.add("show");
 });
