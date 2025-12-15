@@ -1,4 +1,8 @@
-# Music Staff
+<div style="background-color:white; display:flex; justify-content: center; margin-bottom:3rem;">
+<img src="public/vector-score-icon.svg" alt="VectorScore Logo" width="150" height="150" margin-inline="auto" />
+</div>
+
+# Vector Score
 
 A lightweight, SVG-based TypeScript library for rendering musical staves, notes, and rhythm patterns in the browser.
 
@@ -45,7 +49,7 @@ Create a container element in your HTML where the staff will be rendered.
 #### Standard Music Staff (Treble, Bass, Alto)
 
 ```typescript
-import { MusicStaff } from 'music-staff';
+import { MusicStaff } from 'vector-score';
 
 const container = document.getElementById('staff-container');
 
@@ -65,7 +69,7 @@ staff.drawNote(['C4q', 'D4q', 'Eb4q', 'F4q', 'G4q', 'Ab4q', 'Bb4q', 'C5q']);
 #### Grand Staff
 
 ```typescript
-import { MusicStaff } from 'music-staff';
+import { MusicStaff } from 'vector-score';
 
 const grandStaff = new MusicStaff(container, {
   staffType: 'grand',
@@ -80,7 +84,7 @@ grandStaff.drawNote(['C4w', 'A2h', 'F5q']);
 #### Rhythm Staff
 
 ```typescript
-import { RhythmStaff } from 'music-staff';
+import { RhythmStaff } from 'vector-score';
 
 const rhythmContainer = document.getElementById('rhythm-container');
 

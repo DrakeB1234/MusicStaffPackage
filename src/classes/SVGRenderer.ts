@@ -1,4 +1,4 @@
-import { NOTE_LAYER_START_X } from "../constants";
+import { NAMESPACE, NOTE_LAYER_START_X } from "../constants";
 import { GLPYH_ENTRIES, type GlyphNames } from "../glyphs";
 
 const SVG_HREF = "http://www.w3.org/2000/svg";
@@ -45,7 +45,7 @@ export default class SVGRenderer {
     this.scale = options.scale;
 
     this.svgElementRef = document.createElementNS(SVG_HREF, "svg");
-    this.svgElementRef.setAttribute("class", "svg-renderer-root");
+    this.svgElementRef.classList.add(`${NAMESPACE}-svg-renderer-root`);
 
     // SET ROOT SVG ATTRIBUTES, WIDTH/HEIGHT * SCALE APPLIED AFTER STAFF IS DRAWN
     this.svgElementRef.style.maxWidth = `100%`;
@@ -92,7 +92,7 @@ export default class SVGRenderer {
 
   createGroup(className?: string): SVGGElement {
     const g = document.createElementNS(SVG_HREF, "g");
-    if (className) g.classList.add(className);
+    if (className) g.classList.add(`${NAMESPACE}-${className}`);
     return g;
   }
 

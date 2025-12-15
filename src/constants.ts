@@ -15,6 +15,8 @@ export const HALF_NOTE_LEDGER_LINE_WIDTH = 12.5;
 
 export const GRAND_STAFF_SPACING = 30;
 
+export const NAMESPACE = "vs";
+
 export const staffParams: Record<StaffTypes, StaffParams> = {
   treble: {
     staffType: "treble",

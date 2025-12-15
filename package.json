@@ -1,19 +1,19 @@
 {
-  "name": "music-staff",
+  "name": "vector-score",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "files": [
     "dist"
   ],
-  "main": "./dist/music-staff.umd.cjs",
-  "module": "./dist/music-staff.js",
+  "main": "./dist/vector-score.umd.cjs",
+  "module": "./dist/vector-score.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/music-staff.js",
-      "require": "./dist/music-staff.umd.cjs"
+      "import": "./dist/vector-score.js",
+      "require": "./dist/vector-score.umd.cjs"
     }
   },
   "scripts": {
