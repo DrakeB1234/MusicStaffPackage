@@ -58,7 +58,7 @@ export function parseRestString(rest: string): Durations {
     throw new Error(`Invalid rest string format: ${rest}. Expected format: [r][w|h|q|e].`);
   };
 
-  let { _, duration } = match.groups;
+  let duration = match.groups[1];
 
   // Normalize input
   duration = duration.toLowerCase();

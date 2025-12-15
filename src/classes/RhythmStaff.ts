@@ -1,6 +1,6 @@
 import { durationBeatValueMap, HALF_NOTEHEAD_WIDTH, NOTE_LAYER_START_X, NOTEHEAD_STEM_HEIGHT, STAFF_LINE_SPACING } from "../constants";
 import type { GlyphNames } from "../glyphs";
-import { parseDurationNoteString, parseRestString } from "../helpers/notehelpers";
+import { parseDurationNoteString } from "../helpers/notehelpers";
 import type { Durations } from "../types";
 import SVGRenderer from "./SVGRenderer";
 
