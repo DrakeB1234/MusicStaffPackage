@@ -209,6 +209,8 @@ export default class MusicStaff {
     if (normalizedNotesArray.length < 2) throw new Error("Provide more than one note for a chord.");
 
     const notesLayer = this.rendererInstance.getLayerByName("notes");
+    let lastNote: NoteObj | null = null;
+    let consecutiveAccidentalOffset = 0;
 
     const chordGroup = this.rendererInstance.createGroup("chord");
     for (const noteString of normalizedNotesArray) {
@@ -220,8 +222,28 @@ export default class MusicStaff {
       });
       const noteGroup = this.renderNote(noteObj, yPos, this.noteCursorX);
 
+      // If accidental, but no consective accidentals accured, add offset
+      if (noteObj.accidental && consecutiveAccidentalOffset === 0) {
+        consecutiveAccidentalOffset += ACCIDENTAL_OFFSET_X;
+      }
+
+      // If last note had a accidental and the current does, offset the group
+      if (lastNote && lastNote.accidental && noteObj.accidental) {
+        // Get accidental element
+        const noteGroupElementsArr = Array.from(noteGroup.getElementsByTagName("use"));
+        const accidentalElement = noteGroupElementsArr.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
+        if (!accidentalElement) return;
+
+        accidentalElement.setAttribute("transform", `translate(${consecutiveAccidentalOffset}, 0)`);
+        consecutiveAccidentalOffset += ACCIDENTAL_OFFSET_X;
+      };
+
       chordGroup.appendChild(noteGroup);
+      lastNote = noteObj;
     };
+
+    // Apply accidental offset if consecutive accidentals were found
+    if (consecutiveAccidentalOffset) chordGroup.setAttribute("transform", `translate(${-consecutiveAccidentalOffset}, 0)`);
 
     this.noteEntries.push({
       gElement: chordGroup,
@@ -231,7 +253,7 @@ export default class MusicStaff {
     });
 
     // Increment note cursor due to renderNote function being overriden X pos
-    this.noteCursorX += NOTE_SPACING;
+    this.noteCursorX += NOTE_SPACING + -consecutiveAccidentalOffset;
 
     // Commit the newly created note/notes element to the 'notes' layer
     this.rendererInstance.commitElementsToDOM(chordGroup, notesLayer);

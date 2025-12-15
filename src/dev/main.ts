@@ -97,7 +97,11 @@ let selectedStaff: SelectedStaff = {
   name: "grand"
 };
 
-changeStaff("rhythm");
+changeStaff("treble");
+
+if (selectedStaff.staff instanceof MusicStaff) {
+  selectedStaff.staff.drawChord(["F#4", "A#4", "C#5"])
+}
 
 
 function changeStaff(name: string) {
