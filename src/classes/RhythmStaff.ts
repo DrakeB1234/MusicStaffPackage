@@ -424,10 +424,7 @@ export default class RhythmStaff {
     this.noteCursorX = 0;
     this.currentBeatCount = 0;
 
-    this.noteEntries.forEach(e => {
-      e.remove();
-    });
-
+    this.rendererInstance.getLayerByName("notes").replaceChildren();
     this.noteEntries = [];
   }
 }
