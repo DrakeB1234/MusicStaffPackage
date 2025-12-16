@@ -37,7 +37,8 @@ const musicStaffTreble = new MusicStaff(trebleRoot, {
   staffColor: "var(--font-color)",
   staffBackgroundColor: "var(--bg-color)",
   staffType: "treble",
-  spaceBelow: 1
+  spaceBelow: 2,
+  spaceAbove: 4
 });
 
 const musicStaffBass = new MusicStaff(bassRoot, {
@@ -83,6 +84,8 @@ const elements = {
   buttonClearNotes: document.getElementById("button-clear") as HTMLButtonElement,
   buttonIncrementBeat: document.getElementById("button-increment-beat") as HTMLButtonElement,
   buttonResetBeat: document.getElementById("button-reset-beat") as HTMLButtonElement,
+  buttonCompare: document.getElementById("button-compare") as HTMLButtonElement,
+  buttonResetCompare: document.getElementById("button-reset-compare") as HTMLButtonElement,
 
   buttonThemeToggle: document.getElementById("button-theme-toggle") as HTMLButtonElement,
 
@@ -100,7 +103,8 @@ let selectedStaff: SelectedStaff = {
 changeStaff("treble");
 
 if (selectedStaff.staff instanceof MusicStaff) {
-  selectedStaff.staff.drawChord(["F#4", "A#4", "C#5"])
+  // selectedStaff.staff.drawChord(["F#4", "A#4", "C5", "E#5", "G#5", "B#5", "D#6"]);
+  // selectedStaff.staff.drawChord(["B#3", "Cb4", "D#4", "Eb4", "F#4", "Gb4", "A#4", "B#4"]);
 }
 
 
@@ -259,3 +263,11 @@ elements.buttonResetBeat.addEventListener("click", () => {
 
   selectedStaff.staff.resetCurrentBeatUI();
 });
+
+elements.buttonCompare.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof MusicStaff) return;
+  const notesRawString = elements.inputNotes.value;
+  if (!notesRawString) return;
+  const noteParts = notesRawString.split("/");
+
+})

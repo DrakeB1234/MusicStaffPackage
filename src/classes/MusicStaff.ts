@@ -1,5 +1,5 @@
 import { ACCIDENTAL_OFFSET_X, HALF_NOTEHEAD_WIDTH, NOTE_LAYER_START_X, NOTEHEAD_STEM_HEIGHT, STAFF_LINE_SPACING } from "../constants";
-import { parseNoteString } from "../helpers/notehelpers";
+import { getNameOctaveIdx, parseNoteString } from "../helpers/notehelpers";
 import GrandStaffStrategy from "../strategies/GrandStaffStrategy";
 import SingleStaffStrategy from "../strategies/SingleStaffStrategy";
 import type { StaffStrategy } from "../strategies/StrategyInterface";
@@ -24,6 +24,7 @@ type NoteEntry = {
 }
 
 const NOTE_SPACING = 28;
+const CHORD_MAX_CONSECUTIVE_ACCIDENTALS = 3;
 
 export default class MusicStaff {
   private rendererInstance: SVGRenderer;
@@ -101,7 +102,10 @@ export default class MusicStaff {
   }
 
   // Handles drawing the glyphs to internal group, applies the xPositioning to note Cursor X
-  private renderNote(note: NoteObj, ySpacing: number, previousXPos?: number): SVGGElement {
+  private renderNote(note: NoteObj, ySpacing: number): {
+    noteGroup: SVGGElement;
+    xOffset: number;
+  } {
     const noteGroup = this.rendererInstance.createGroup("note");
     let noteFlip = false;
 
@@ -148,25 +152,77 @@ export default class MusicStaff {
       this.rendererInstance.drawLine(e.x1, e.yPos, e.x2, e.yPos, noteGroup);
     });
 
-    // If this value was provided, then a note is being replaced, so don't update cursor and use last X Pos of note
-    if (previousXPos !== undefined) {
-      noteGroup.setAttribute("transform", `translate(${previousXPos}, ${ySpacing})`);
-      return noteGroup;
+    return {
+      noteGroup: noteGroup,
+      xOffset: xOffset
+    };
+  }
+
+  private chordOffsetConsecutiveAccidentals(notes: NoteEntry[]): number {
+    let consecutiveXOffset = 0;
+    let maxConsecutiveXOffset = 0;
+    let currentAccidentalCount = 0;
+    for (let i = 0; i < notes.length; i++) {
+      const currNote = notes[i];
+
+      if (currNote.note.accidental && currentAccidentalCount < CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
+        consecutiveXOffset += ACCIDENTAL_OFFSET_X;
+        maxConsecutiveXOffset = Math.min(maxConsecutiveXOffset, consecutiveXOffset);
+        currentAccidentalCount++;
+      }
+      else if (currNote.note.accidental && currentAccidentalCount <= CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
+        consecutiveXOffset = ACCIDENTAL_OFFSET_X
+        currentAccidentalCount = 1;
+      }
+      else {
+        consecutiveXOffset = 0
+        currentAccidentalCount = 0;
+      };
+
+      if (consecutiveXOffset !== 0) {
+        const useElements = Array.from(currNote.gElement.getElementsByTagName("use"));
+        const accidentalElement = useElements.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
+        if (!accidentalElement) continue;
+        // The additional accidental being added here is due to the offset being baked into the glyph, so the first accidental is applied
+        accidentalElement.setAttribute("transform", `translate(${consecutiveXOffset + -ACCIDENTAL_OFFSET_X}, 0)`);
+      }
     }
 
-    // Apply positioning to note group container
-    noteGroup.setAttribute("transform", `translate(${this.noteCursorX + xOffset}, ${ySpacing})`);
+    return -maxConsecutiveXOffset;
+  }
 
-    // Add note to entries, then increment spacing.
-    this.noteEntries.push({
-      gElement: noteGroup,
-      note: note,
-      yPos: ySpacing,
-      xPos: this.noteCursorX + xOffset
-    });
+  private chordOffsetCloseNotes(notes: NoteEntry[]): number {
+    // Loop starts at index 1, due to the first note never being offset
+    let prevNote: NoteEntry = notes[0];
+    let closeNotesXOffset = 0;
+    for (let i = 1; i < notes.length; i++) {
+      const currNote = notes[i];
+      const nameDiff = getNameOctaveIdx(currNote.note.name, currNote.note.octave) - getNameOctaveIdx(prevNote.note.name, prevNote.note.octave);
 
-    this.noteCursorX += NOTE_SPACING + xOffset;
-    return noteGroup;
+      if (nameDiff === 1) {
+        closeNotesXOffset = NOTE_SPACING / 2
+        currNote.gElement.setAttribute("transform", `translate(${closeNotesXOffset}, ${currNote.yPos})`);
+
+        // If accidental, offset it
+        const useElements = Array.from(currNote.gElement.getElementsByTagName("use"));
+        const accidentalElement = useElements.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
+        if (accidentalElement) {
+          const matches = accidentalElement.getAttribute("transform")?.match(/([-]?\d+)/);
+          const currentXOffset = matches && matches[0];
+          let newXPos = -closeNotesXOffset;
+          if (currentXOffset) newXPos += Number(currentXOffset);
+          accidentalElement.setAttribute("transform", `translate(${newXPos}, 0)`);
+        }
+
+        i++;
+        prevNote = notes[i];
+        continue;
+      }
+
+      prevNote = currNote;
+    }
+
+    return closeNotesXOffset;
   }
 
   /**
@@ -194,9 +250,18 @@ export default class MusicStaff {
         name: noteObj.name,
         octave: noteObj.octave
       });
-      const noteGroup = this.renderNote(noteObj, yPos);
+      // Handle note rendering
+      const res = this.renderNote(noteObj, yPos);
+      res.noteGroup.setAttribute("transform", `translate(${this.noteCursorX + res.xOffset}, ${yPos})`);
+      this.noteEntries.push({
+        gElement: res.noteGroup,
+        note: noteObj,
+        xPos: this.noteCursorX + res.xOffset,
+        yPos: yPos
+      });
 
-      noteGroups.push(noteGroup);
+      this.noteCursorX += NOTE_SPACING + res.xOffset;
+      noteGroups.push(res.noteGroup);
     }
 
     // Commit the newly created note/notes element to the 'notes' layer
@@ -209,8 +274,7 @@ export default class MusicStaff {
     if (normalizedNotesArray.length < 2) throw new Error("Provide more than one note for a chord.");
 
     const notesLayer = this.rendererInstance.getLayerByName("notes");
-    let lastNote: NoteObj | null = null;
-    let consecutiveAccidentalOffset = 0;
+    const noteObjs: NoteEntry[] = [];
 
     const chordGroup = this.rendererInstance.createGroup("chord");
     for (const noteString of normalizedNotesArray) {
@@ -220,30 +284,24 @@ export default class MusicStaff {
         name: noteObj.name,
         octave: noteObj.octave
       });
-      const noteGroup = this.renderNote(noteObj, yPos, this.noteCursorX);
+      const res = this.renderNote(noteObj, yPos);
+      res.noteGroup.setAttribute("transform", `translate(0, ${yPos})`);
 
-      // If accidental, but no consective accidentals accured, add offset
-      if (noteObj.accidental && consecutiveAccidentalOffset === 0) {
-        consecutiveAccidentalOffset += ACCIDENTAL_OFFSET_X;
-      }
-
-      // If last note had a accidental and the current does, offset the group
-      if (lastNote && lastNote.accidental && noteObj.accidental) {
-        // Get accidental element
-        const noteGroupElementsArr = Array.from(noteGroup.getElementsByTagName("use"));
-        const accidentalElement = noteGroupElementsArr.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
-        if (!accidentalElement) return;
-
-        accidentalElement.setAttribute("transform", `translate(${consecutiveAccidentalOffset}, 0)`);
-        consecutiveAccidentalOffset += ACCIDENTAL_OFFSET_X;
-      };
-
-      chordGroup.appendChild(noteGroup);
-      lastNote = noteObj;
+      chordGroup.appendChild(res.noteGroup);
+      noteObjs.push({
+        gElement: res.noteGroup,
+        note: noteObj,
+        yPos: yPos,
+        xPos: 0
+      });
     };
 
-    // Apply accidental offset if consecutive accidentals were found
-    if (consecutiveAccidentalOffset) chordGroup.setAttribute("transform", `translate(${-consecutiveAccidentalOffset}, 0)`);
+    // Chcek / apply offset from accidentals
+    const accidentalXOffset = this.chordOffsetConsecutiveAccidentals(noteObjs);
+    const closeNotesXOffset = this.chordOffsetCloseNotes(noteObjs);
+
+    // Apply XPos to chord parent
+    chordGroup.setAttribute("transform", `translate(${this.noteCursorX + accidentalXOffset}, 0)`);
 
     this.noteEntries.push({
       gElement: chordGroup,
@@ -253,7 +311,7 @@ export default class MusicStaff {
     });
 
     // Increment note cursor due to renderNote function being overriden X pos
-    this.noteCursorX += NOTE_SPACING + -consecutiveAccidentalOffset;
+    this.noteCursorX += NOTE_SPACING + accidentalXOffset + closeNotesXOffset;
 
     // Commit the newly created note/notes element to the 'notes' layer
     this.rendererInstance.commitElementsToDOM(chordGroup, notesLayer);
@@ -314,17 +372,18 @@ export default class MusicStaff {
 
     // Remove previous note elements then render new one in same x positioning
     noteEntry.gElement.remove();
-    const noteGroup = this.renderNote(noteObj, newNoteYPos, noteEntry.xPos + accidentalXPosOffset);
+    const res = this.renderNote(noteObj, newNoteYPos);
+    res.noteGroup.setAttribute("transform", `translate(${noteEntry.xPos + accidentalXPosOffset}, ${newNoteYPos})`);
 
     // Replace in place old entry with new
     this.noteEntries[noteIndex] = {
-      gElement: noteGroup,
+      gElement: res.noteGroup,
       note: noteObj,
       xPos: noteEntry.xPos + accidentalXPosOffset,
       yPos: newNoteYPos
     };
 
-    this.rendererInstance.commitElementsToDOM(noteGroup, this.rendererInstance.getLayerByName("notes"));
+    this.rendererInstance.commitElementsToDOM(res.noteGroup, this.rendererInstance.getLayerByName("notes"));
   };
 
   applyClassToNoteByIndex(className: string, noteIndex: number) {

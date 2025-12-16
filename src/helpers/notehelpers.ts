@@ -1,9 +1,9 @@
 import { type GlyphNames } from "../glyphs";
 import type { Accidentals, Durations, NoteNames, NoteObj } from "../types";
 
-export const REGEX_NOTE_STRING = /^(?<name>[A-Ga-g])(?<accidental>[#b]?)(?<octave>\d)(?<duration>[whqeWHQE]?)$/;
-export const REGEX_DURATION_NOTE_STRING = /^[whqeWHQE]$/;
-export const REGEX_REST_STRING = /^(?<rest>[rR])(?<duration>[whqeWHQE]?)$/;
+const REGEX_NOTE_STRING = /^(?<name>[A-Ga-g])(?<accidental>[#b]?)(?<octave>\d)(?<duration>[whqeWHQE]?)$/;
+const REGEX_DURATION_NOTE_STRING = /^[whqeWHQE]$/;
+const REGEX_REST_STRING = /^(?<rest>[rR])(?<duration>[whqeWHQE]?)$/;
 
 const NOTE_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as NoteNames[];
 
@@ -102,4 +102,9 @@ export function noteToAbsoluteSemitone(note: NoteObj): number {
   let semitone = NOTE_NAMES.indexOf(note.name);
   semitone += (note.octave * 12)
   return semitone;
+}
+
+export function getNameOctaveIdx(name: string, octave: number): number {
+  const idx = NOTE_NAMES.findIndex(e => e === name) + 1;
+  return idx + octave * 7;
 }
