@@ -110,6 +110,8 @@ if (selectedStaff.staff instanceof MusicStaff) {
   selectedStaff.staff.drawChord(["C4", "E4", "G4"]);
 }
 
+elements.inputNotes.value = "C4/E#4/G4"
+
 
 function changeStaff(name: string) {
   selectedStaff.element.classList.remove('show');

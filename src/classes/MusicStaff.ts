@@ -21,6 +21,7 @@ type NoteEntry = {
   note: NoteObj;
   xPos: number;
   yPos: number;
+  accidentalXOffset: number;
 }
 
 const NOTE_SPACING = 28;
@@ -269,7 +270,8 @@ export default class MusicStaff {
         gElement: res.noteGroup,
         note: noteObj,
         xPos: this.noteCursorX + res.xOffset,
-        yPos: yPos
+        yPos: yPos,
+        accidentalXOffset: res.xOffset
       });
 
       this.noteCursorX += NOTE_SPACING + res.xOffset;
@@ -303,8 +305,9 @@ export default class MusicStaff {
       noteObjs.push({
         gElement: res.noteGroup,
         note: noteObj,
+        xPos: 0,
         yPos: yPos,
-        xPos: 0
+        accidentalXOffset: 0
       });
     };
 
@@ -318,8 +321,9 @@ export default class MusicStaff {
     this.noteEntries.push({
       gElement: chordGroup,
       note: parseNoteString(normalizedNotesArray[0]),
-      xPos: this.noteCursorX,
-      yPos: 0
+      xPos: this.noteCursorX + accidentalXOffset,
+      yPos: 0,
+      accidentalXOffset: accidentalXOffset
     });
 
     // Increment note cursor due to renderNote function being overriden X pos
@@ -370,17 +374,12 @@ export default class MusicStaff {
       octave: noteObj.octave
     });
 
-    // Determermines new offset based off the previous note diff in accidental to the new note
-    let accidentalXPosOffset = 0;
-    if (noteEntry.note.accidental && !noteObj.accidental) {
-      accidentalXPosOffset = ACCIDENTAL_OFFSET_X;
-    }
-    else if (!noteEntry.note.accidental && noteObj.accidental) {
-      accidentalXPosOffset = -ACCIDENTAL_OFFSET_X;
-    }
-
     const res = this.renderNote(noteObj, newNoteYPos);
-    res.noteGroup.setAttribute("transform", `translate(${noteEntry.xPos + accidentalXPosOffset}, ${newNoteYPos})`);
+    const normalizedOriginalXPos = noteEntry.xPos - noteEntry.accidentalXOffset;
+    // Due to normalization of orignal note pos, this will only consider the newly caculated X pos
+    const newXPos = normalizedOriginalXPos + res.xOffset;
+
+    res.noteGroup.setAttribute("transform", `translate(${newXPos}, ${newNoteYPos})`);
 
     // Replace with new note
     this.rendererInstance.getLayerByName("notes").replaceChild(res.noteGroup, noteEntry.gElement);
@@ -389,8 +388,9 @@ export default class MusicStaff {
     this.noteEntries[noteIndex] = {
       gElement: res.noteGroup,
       note: noteObj,
-      xPos: noteEntry.xPos + accidentalXPosOffset,
-      yPos: newNoteYPos
+      xPos: newXPos,
+      yPos: newNoteYPos,
+      accidentalXOffset: res.xOffset
     };
   };
 
@@ -417,7 +417,8 @@ export default class MusicStaff {
         gElement: res.noteGroup,
         note: noteObj,
         yPos: yPos,
-        xPos: 0
+        xPos: 0,
+        accidentalXOffset: 0
       });
     };
 
@@ -425,8 +426,12 @@ export default class MusicStaff {
     const accidentalXOffset = this.chordOffsetConsecutiveAccidentals(noteObjs);
     this.chordOffsetCloseNotes(noteObjs);
 
+    const normalizedOriginalXPos = chordEntry.xPos - chordEntry.accidentalXOffset;
+    // Due to normalization of orignal note pos, this will only consider the newly caculated X pos
+    const newXPos = normalizedOriginalXPos + accidentalXOffset;
+
     // Apply XPos to chord parent not sure how to handle xOffsets without them accumlating
-    chordGroup.setAttribute("transform", `translate(${chordEntry.xPos}, 0)`);
+    chordGroup.setAttribute("transform", `translate(${newXPos}, 0)`);
 
     // Replace with new note
     this.rendererInstance.getLayerByName("notes").replaceChild(chordGroup, chordEntry.gElement);
@@ -435,8 +440,9 @@ export default class MusicStaff {
     this.noteEntries[chordIndex] = {
       gElement: chordGroup,
       note: parseNoteString(notes[0]),
-      xPos: chordEntry.xPos,
-      yPos: 0
+      xPos: newXPos,
+      yPos: 0,
+      accidentalXOffset: accidentalXOffset
     };
   };
 
