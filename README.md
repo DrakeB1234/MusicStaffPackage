@@ -133,8 +133,6 @@ Notes are defined using a specific string format parsed by the library:
 | `justifyNotes()` | Evenly spaces all currently drawn notes across the staff width. |
 | `clearAllNotes()` | Removes all notes from the staff and resets the cursor. |
 | `changeNoteByIndex(note: string, index: number)` | Replaces a note at a specific index with a new note. |
-| `showWrongNoteUIByNoteIndex(note, index)` | Highlights a specific note position to indicate an error (useful for quizzes). |
-| `hideWrongNoteUI()` | Hides error UI. |
 
 ### RhythmStaff Class
 

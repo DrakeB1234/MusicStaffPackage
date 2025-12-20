@@ -107,7 +107,7 @@ if (selectedStaff.staff instanceof MusicStaff) {
   // selectedStaff.staff.drawChord(["F#4", "A#4", "C5", "E#5", "G#5", "B#5", "D#6"]);
   // selectedStaff.staff.drawChord(["B#3", "Cb4", "D#4", "Eb4", "F#4", "Gb4", "A#4", "B#4"]);
   // selectedStaff.staff.drawNote(["F#4", "Fb4", "Fn4", "F##4", "Fbb4"]);
-  selectedStaff.staff.drawChord(["C4", "E4", "G4"]);
+  // selectedStaff.staff.drawChord(["C4", "E4", "G4"]);
 }
 
 elements.inputNotes.value = "C4/E#4/G4"
@@ -242,21 +242,7 @@ elements.buttonJustifyNotes?.addEventListener("click", () => {
 });
 
 elements.buttonErrorNote?.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof RhythmStaff) return;
 
-  const noteIndexRawValue = elements.inputNoteIndex.value;
-  const noteIndex = Number(noteIndexRawValue);
-  if (typeof noteIndex !== "number") return;
-  const notesRawString = elements.inputNotes.value;
-  if (!notesRawString) return;
-  const noteParts = notesRawString.split("/");
-
-  selectedStaff.staff.showWrongNoteUIByNoteIndex(noteParts[0], noteIndex);
-
-  setTimeout(() => {
-    if (selectedStaff.staff instanceof RhythmStaff) return;
-    selectedStaff.staff.hideWrongNoteUI();
-  }, 1000);
 });
 
 elements.buttonClearNotes?.addEventListener("click", () => {
