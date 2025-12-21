@@ -4,21 +4,17 @@ import type { StaffStrategy } from "../strategies/StrategyInterface";
 import type { NoteObj } from "../types";
 import type SVGRenderer from "./SVGRenderer";
 
-export type NoteEntry = {
-  gElement: SVGGElement;
-  note: NoteObj;
-  xPos: number;
-  yPos: number;
-  accidentalXOffset: number;
-};
-
 /**
  * @param {SVGGElement} noteGroup - The group that is returned from renderNote or renderGroup
+ * @param {NoteObj} noteObj - The parse note string into NoteObj
+ * @param {number} noteYPos - The Y pos of the notes group
  * @param {number} accidentalOffset - The total xOffset from any accidentals from a note. Chords could have a 1..3 of these offsets
  * @param {number} cursorOffset - The requested amount the cursor should be offset. Chords use this when a note is close and offsetted to the left.
 */
-type RenderNoteReturn = {
+export type RenderNoteReturn = {
   noteGroup: SVGGElement;
+  noteObj: NoteObj;
+  noteYPos: number;
   accidentalOffset: number;
   cursorOffset: number;
 }
@@ -42,19 +38,19 @@ export default class NoteRenderer {
     }
   }
 
-  private chordOffsetConsecutiveAccidentals(notes: NoteEntry[]): number {
+  private chordOffsetConsecutiveAccidentals(notes: RenderNoteReturn[]): number {
     let consecutiveXOffset = 0;
     let maxConsecutiveXOffset = 0;
     let currentAccidentalCount = 0;
     for (let i = 0; i < notes.length; i++) {
       const currNote = notes[i];
 
-      if (currNote.note.accidental && currentAccidentalCount < CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
+      if (currNote.noteObj.accidental && currentAccidentalCount < CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
         consecutiveXOffset += ACCIDENTAL_OFFSET_X;
         maxConsecutiveXOffset = Math.min(maxConsecutiveXOffset, consecutiveXOffset);
         currentAccidentalCount++;
       }
-      else if (currNote.note.accidental && currentAccidentalCount <= CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
+      else if (currNote.noteObj.accidental && currentAccidentalCount <= CHORD_MAX_CONSECUTIVE_ACCIDENTALS) {
         consecutiveXOffset = ACCIDENTAL_OFFSET_X
         currentAccidentalCount = 1;
       }
@@ -64,7 +60,7 @@ export default class NoteRenderer {
       };
 
       if (consecutiveXOffset !== 0) {
-        const useElements = Array.from(currNote.gElement.getElementsByTagName("use"));
+        const useElements = Array.from(currNote.noteGroup.getElementsByTagName("use"));
         const accidentalElement = useElements.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
         if (!accidentalElement) continue;
         // The additional accidental being added here is due to the offset being baked into the glyph, so the first accidental is applied
@@ -75,20 +71,20 @@ export default class NoteRenderer {
     return -maxConsecutiveXOffset;
   }
 
-  private chordOffsetCloseNotes(notes: NoteEntry[]): number {
+  private chordOffsetCloseNotes(notes: RenderNoteReturn[]): number {
     // Loop starts at index 1, due to the first note never being offset
-    let prevNote: NoteEntry = notes[0];
+    let prevNote: RenderNoteReturn = notes[0];
     let closeNotesXOffset = 0;
     for (let i = 1; i < notes.length; i++) {
       const currNote = notes[i];
-      const nameDiff = getNameOctaveIdx(currNote.note.name, currNote.note.octave) - getNameOctaveIdx(prevNote.note.name, prevNote.note.octave);
+      const nameDiff = getNameOctaveIdx(currNote.noteObj.name, currNote.noteObj.octave) - getNameOctaveIdx(prevNote.noteObj.name, prevNote.noteObj.octave);
 
       if (nameDiff === 1) {
         closeNotesXOffset = NOTE_SPACING / 2
-        currNote.gElement.setAttribute("transform", `translate(${closeNotesXOffset}, ${currNote.yPos})`);
+        currNote.noteGroup.setAttribute("transform", `translate(${closeNotesXOffset}, ${currNote.noteYPos})`);
 
         // If accidental, offset it
-        const useElements = Array.from(currNote.gElement.getElementsByTagName("use"));
+        const useElements = Array.from(currNote.noteGroup.getElementsByTagName("use"));
         const accidentalElement = useElements.find(e => e.getAttribute("href")?.includes("ACCIDENTAL"));
         if (accidentalElement) {
           const matches = accidentalElement.getAttribute("transform")?.match(/([-]?\d+)/);
@@ -110,11 +106,17 @@ export default class NoteRenderer {
   }
 
   // Handles drawing the glyphs to internal group, applies the xPositioning to note Cursor X
-  renderNote(note: NoteObj, ySpacing: number): RenderNoteReturn {
+  renderNote(noteString: string): RenderNoteReturn {
     const noteGroup = this.svgRendererInstance.createGroup("note");
-    let noteFlip = this.strategyInstance.shouldNoteFlip(ySpacing);
 
-    switch (note.duration) {
+    const noteObj = parseNoteString(noteString);
+    const yPos = this.strategyInstance.calculateNoteYPos({
+      name: noteObj.name,
+      octave: noteObj.octave
+    });
+    let noteFlip = this.strategyInstance.shouldNoteFlip(yPos);
+
+    switch (noteObj.duration) {
       case "h":
         this.svgRendererInstance.drawGlyph("NOTE_HEAD_HALF", noteGroup);
         this.drawStem(noteGroup, noteFlip);
@@ -133,7 +135,7 @@ export default class NoteRenderer {
 
     // Draw accidental, add its offset
     let xOffset = 0;
-    switch (note.accidental) {
+    switch (noteObj.accidental) {
       case "#":
         this.svgRendererInstance.drawGlyph("ACCIDENTAL_SHARP", noteGroup);
         xOffset -= ACCIDENTAL_OFFSET_X;
@@ -157,44 +159,35 @@ export default class NoteRenderer {
     }
 
     // Strategy returns coords of expected ledger lines, this class will handle drawing them.
-    const ledgerLines = this.strategyInstance.getLedgerLinesX({
-      name: note.name,
-      octave: note.octave,
-      duration: note.duration
-    }, ySpacing);
+    const ledgerLines = this.strategyInstance.getLedgerLinesX(noteObj, yPos);
     ledgerLines.forEach(e => {
       this.svgRendererInstance.drawLine(e.x1, e.yPos, e.x2, e.yPos, noteGroup);
     });
 
     return {
       noteGroup: noteGroup,
+      noteObj: noteObj,
+      noteYPos: yPos,
       accidentalOffset: xOffset,
       cursorOffset: 0
     };
   }
 
-  // Applies Y pos to notes in a single chord group
   renderChord(notes: string[]): RenderNoteReturn {
     const chordGroup = this.svgRendererInstance.createGroup("chord");
-    const noteObjs: NoteEntry[] = [];
+    const noteObjs: RenderNoteReturn[] = [];
 
     for (const noteString of notes) {
-      const noteObj: NoteObj = parseNoteString(noteString);
-
-      const yPos = this.strategyInstance.calculateNoteYPos({
-        name: noteObj.name,
-        octave: noteObj.octave
-      });
-      const res = this.renderNote(noteObj, yPos);
-      res.noteGroup.setAttribute("transform", `translate(0, ${yPos})`);
+      const res = this.renderNote(noteString);
+      res.noteGroup.setAttribute("transform", `translate(0, ${res.noteYPos})`);
 
       chordGroup.appendChild(res.noteGroup);
       noteObjs.push({
-        gElement: res.noteGroup,
-        note: noteObj,
-        xPos: 0,
-        yPos: yPos,
-        accidentalXOffset: 0
+        noteGroup: res.noteGroup,
+        noteObj: res.noteObj,
+        noteYPos: res.noteYPos,
+        cursorOffset: 0,
+        accidentalOffset: 0
       });
     };
 
@@ -204,6 +197,8 @@ export default class NoteRenderer {
 
     return {
       noteGroup: chordGroup,
+      noteObj: noteObjs[0].noteObj,
+      noteYPos: 0,
       accidentalOffset: accidentalXOffset,
       cursorOffset: closeNotesXOffset
     }

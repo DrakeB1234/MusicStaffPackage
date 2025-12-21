@@ -1,21 +1,23 @@
 import MusicStaff from '../classes/MusicStaff';
 import RhythmStaff from '../classes/RhythmStaff';
+import ScrollingStaff from '../classes/ScrollingStaff';
 import './style.css';
 
 const grandRoot = document.getElementById("staff-root-grand");
 const trebleRoot = document.getElementById("staff-root-treble");
 const bassRoot = document.getElementById("staff-root-bass");
 const altoRoot = document.getElementById("staff-root-alto");
+const scrollingRoot = document.getElementById("staff-root-scrolling");
 
 const rhythmRoot = document.getElementById("staff-root-rhythm");
 
-if (!trebleRoot || !bassRoot || !grandRoot || !altoRoot || !rhythmRoot) {
+if (!trebleRoot || !bassRoot || !grandRoot || !altoRoot || !rhythmRoot || !scrollingRoot) {
   throw new Error("Required DOM elements not found.");
 };
 
 type SelectedStaff = {
   element: HTMLElement;
-  staff: MusicStaff | RhythmStaff;
+  staff: MusicStaff | RhythmStaff | ScrollingStaff;
   name: string;
 }
 
@@ -61,6 +63,16 @@ const musicStaffAlto = new MusicStaff(altoRoot, {
   spaceBelow: 1,
 });
 
+const scrollingStaff = new ScrollingStaff(scrollingRoot, {
+  width: 350,
+  scale: 1.2,
+  staffColor: "var(--font-color)",
+  staffBackgroundColor: "var(--bg-color)",
+  staffType: "treble",
+  spaceAbove: 1,
+  spaceBelow: 1,
+});
+
 const rhythmStaff = new RhythmStaff(rhythmRoot, {
   width: 400,
   scale: 1.2,
@@ -87,6 +99,7 @@ const elements = {
   buttonResetBeat: document.getElementById("button-reset-beat") as HTMLButtonElement,
   buttonCompare: document.getElementById("button-compare") as HTMLButtonElement,
   buttonResetCompare: document.getElementById("button-reset-compare") as HTMLButtonElement,
+  buttonTest: document.getElementById("button-test") as HTMLButtonElement,
 
   buttonThemeToggle: document.getElementById("button-theme-toggle") as HTMLButtonElement,
 
@@ -101,7 +114,7 @@ let selectedStaff: SelectedStaff = {
   name: "grand"
 };
 
-changeStaff("treble");
+changeStaff("scrolling");
 
 if (selectedStaff.staff instanceof MusicStaff) {
   // selectedStaff.staff.drawChord(["F#4", "A#4", "C5", "E#5", "G#5", "B#5", "D#6"]);
@@ -110,8 +123,7 @@ if (selectedStaff.staff instanceof MusicStaff) {
   // selectedStaff.staff.drawChord(["C4", "E4", "G4"]);
 }
 
-elements.inputNotes.value = "C4/E#4/G4"
-
+elements.inputNotes.value = "C4/E#4/G4";
 
 function changeStaff(name: string) {
   selectedStaff.element.classList.remove('show');
@@ -145,6 +157,13 @@ function changeStaff(name: string) {
         name: "alto"
       }
       break;
+    case "scrolling":
+      selectedStaff = {
+        element: scrollingRoot!,
+        staff: scrollingStaff,
+        name: "scrolling"
+      }
+      break;
     case "rhythm":
       selectedStaff = {
         element: rhythmRoot!,
@@ -159,6 +178,10 @@ function changeStaff(name: string) {
 };
 
 // Event Listeners
+elements.buttonTest?.addEventListener("click", () => {
+  scrollingStaff.queueNotes(["C4", "D4", ["C4", "E#4", "F4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"]]);
+})
+
 elements.buttonThemeToggle?.addEventListener("click", () => {
   const root = document.documentElement;
   const theme = root.getAttribute("data-theme");
@@ -172,7 +195,7 @@ elements.buttonThemeToggle?.addEventListener("click", () => {
 });
 
 elements.buttonChangeNote.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof RhythmStaff) return;
+  if (selectedStaff.staff instanceof RhythmStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   const noteIndexRawValue = elements.inputNoteIndex.value;
   const noteIndex = Number(noteIndexRawValue);
@@ -185,7 +208,7 @@ elements.buttonChangeNote.addEventListener("click", () => {
 })
 
 elements.buttonChangeChord.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof RhythmStaff) return;
+  if (selectedStaff.staff instanceof RhythmStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   const noteIndexRawValue = elements.inputNoteIndex.value;
   const noteIndex = Number(noteIndexRawValue);
@@ -198,6 +221,8 @@ elements.buttonChangeChord.addEventListener("click", () => {
 })
 
 elements.buttonDrawNotes?.addEventListener("click", () => {
+  if (selectedStaff.staff instanceof ScrollingStaff) return;
+
   const notesRawString = elements.inputNotes.value;
   if (!notesRawString) return;
   const noteParts = notesRawString.split("/");
@@ -206,7 +231,7 @@ elements.buttonDrawNotes?.addEventListener("click", () => {
 });
 
 elements.buttonDrawChord?.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof RhythmStaff) return;
+  if (selectedStaff.staff instanceof RhythmStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   const notesRawString = elements.inputNotes.value;
   if (!notesRawString) return;
@@ -236,7 +261,7 @@ elements.buttonDrawRests.addEventListener("click", () => {
 });
 
 elements.buttonJustifyNotes?.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof RhythmStaff) return;
+  if (selectedStaff.staff instanceof RhythmStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   selectedStaff.staff.justifyNotes();
 });
@@ -257,13 +282,13 @@ elements.inputStaff.addEventListener("change", (e: Event) => {
 });
 
 elements.buttonIncrementBeat.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof MusicStaff) return;
+  if (selectedStaff.staff instanceof MusicStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   selectedStaff.staff.incrementCurrentBeatUI();
 });
 
 elements.buttonResetBeat.addEventListener("click", () => {
-  if (selectedStaff.staff instanceof MusicStaff) return;
+  if (selectedStaff.staff instanceof MusicStaff || selectedStaff.staff instanceof ScrollingStaff) return;
 
   selectedStaff.staff.resetCurrentBeatUI();
 });

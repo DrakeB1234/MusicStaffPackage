@@ -5,7 +5,7 @@ import GrandStaffStrategy from "../strategies/GrandStaffStrategy";
 import SingleStaffStrategy from "../strategies/SingleStaffStrategy";
 import type { StaffStrategy } from "../strategies/StrategyInterface";
 import type { NoteObj, StaffTypes } from "../types";
-import NoteRenderer, { type NoteEntry } from "./NoteRenderer";
+import NoteRenderer, { type RenderNoteReturn } from "./NoteRenderer";
 import SVGRenderer from "./SVGRenderer";
 
 export type MusicStaffOptions = {
@@ -23,6 +23,14 @@ const USE_GLPYHS: GlyphNames[] = [
   "NOTE_HEAD_WHOLE", "NOTE_HEAD_HALF", "NOTE_HEAD_QUARTER", "EIGHTH_NOTE", "EIGHTH_NOTE_FLIPPED",
   "ACCIDENTAL_SHARP", "ACCIDENTAL_FLAT", "ACCIDENTAL_NATURAL", "ACCIDENTAL_DOUBLE_SHARP", "ACCIDENTAL_DOUBLE_FLAT"
 ];
+
+type NoteEntry = {
+  gElement: SVGGElement;
+  note: NoteObj;
+  xPos: number;
+  yPos: number;
+  accidentalXOffset: number;
+};
 
 export default class MusicStaff {
   private svgRendererInstance: SVGRenderer;
@@ -109,29 +117,23 @@ export default class MusicStaff {
 
     const noteGroups: SVGGElement[] = [];
     for (const noteString of normalizedNotesArray) {
-      let noteObj: NoteObj | undefined;
+      let res: RenderNoteReturn | undefined;
+
+      // If theres a failed render of a string entry, commit any remaining note groups
       try {
-        noteObj = parseNoteString(noteString);
+        res = this.noteRendererInstance.renderNote(noteString);
       }
       catch (error) {
         if (noteGroups.length > 0) this.svgRendererInstance.commitElementsToDOM(noteGroups, notesLayer);
         throw error;
       };
 
-      const yPos = this.strategyInstance.calculateNoteYPos({
-        name: noteObj.name,
-        octave: noteObj.octave
-      });
-
-      // Handle note rendering
-      const res = this.noteRendererInstance.renderNote(noteObj, yPos);
-
-      res.noteGroup.setAttribute("transform", `translate(${this.noteCursorX + res.accidentalOffset}, ${yPos})`);
+      res.noteGroup.setAttribute("transform", `translate(${this.noteCursorX + res.accidentalOffset}, ${res.noteYPos})`);
       this.noteEntries.push({
         gElement: res.noteGroup,
-        note: noteObj,
+        note: res.noteObj,
         xPos: this.noteCursorX + res.accidentalOffset,
-        yPos: yPos,
+        yPos: res.noteYPos,
         accidentalXOffset: res.accidentalOffset
       });
 
@@ -143,7 +145,6 @@ export default class MusicStaff {
     this.svgRendererInstance.commitElementsToDOM(noteGroups, notesLayer);
   }
 
-  // Bugs: JustifyNotes does not position chord group correctly. When stem note is used, the note can flip, causing weird looking chord
   drawChord(notes: string[]) {
     if (notes.length < 2) throw new Error("Provide more than one note for a chord.");
     const notesLayer = this.svgRendererInstance.getLayerByName("notes");
@@ -214,20 +215,15 @@ export default class MusicStaff {
 
   changeNoteByIndex(note: string, noteIndex: number) {
     if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
-    const noteObj: NoteObj = parseNoteString(note);
     const noteEntry = this.noteEntries[noteIndex];
-    const newNoteYPos = this.strategyInstance.calculateNoteYPos({
-      name: noteObj.name,
-      octave: noteObj.octave
-    });
 
-    const res = this.noteRendererInstance.renderNote(noteObj, newNoteYPos);
+    const res = this.noteRendererInstance.renderNote(note);
     const normalizedOriginalXPos = noteEntry.xPos - noteEntry.accidentalXOffset;
 
     // Due to normalization of orignal note pos, this will only consider the newly caculated accidental X offset
     const newXPos = normalizedOriginalXPos + res.accidentalOffset;
 
-    res.noteGroup.setAttribute("transform", `translate(${newXPos}, ${newNoteYPos})`);
+    res.noteGroup.setAttribute("transform", `translate(${newXPos}, ${res.noteYPos})`);
 
     // Replace with new note
     this.svgRendererInstance.getLayerByName("notes").replaceChild(res.noteGroup, noteEntry.gElement);
@@ -235,9 +231,9 @@ export default class MusicStaff {
     // Replace place in list with new note data
     this.noteEntries[noteIndex] = {
       gElement: res.noteGroup,
-      note: noteObj,
+      note: res.noteObj,
       xPos: newXPos,
-      yPos: newNoteYPos,
+      yPos: res.noteYPos,
       accidentalXOffset: res.accidentalOffset
     };
   };
