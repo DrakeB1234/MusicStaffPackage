@@ -1,10 +1,10 @@
-import { NOTE_SPACING, STAFF_LINE_SPACING } from "../constants";
+import { NOTE_LAYER_START_X, STAFF_LINE_SPACING } from "../constants";
 import type { GlyphNames } from "../glyphs";
 import GrandStaffStrategy from "../strategies/GrandStaffStrategy";
 import SingleStaffStrategy from "../strategies/SingleStaffStrategy";
 import type { StaffStrategy } from "../strategies/StrategyInterface";
 import type { StaffTypes } from "../types";
-import NoteRenderer from "./NoteRenderer";
+import NoteRenderer, { type RenderNoteReturn } from "./NoteRenderer";
 import SVGRenderer from "./SVGRenderer";
 
 export type MusicStaffOptions = {
@@ -31,11 +31,12 @@ type BufferedEntry = {
 }
 
 type ActiveEntry = {
-  gElement: SVGGElement;
+  noteWrapper: SVGGElement;
   xPos: number;
 }
 
-const SCROLLING_NOTE_SPACING = 40;
+const SCROLLING_NOTE_SPACING = 60;
+const SPAWN_X_OFFSET = SCROLLING_NOTE_SPACING;
 
 export default class ScrollingStaff {
   private svgRendererInstance: SVGRenderer;
@@ -106,6 +107,9 @@ export default class ScrollingStaff {
       this.svgRendererInstance.addTotalRootSvgHeight(height);
     }
 
+    // Add class for transition css animation
+    this.svgRendererInstance.getLayerByName("notes").classList.add("scrolling-notes-layer");
+
     // Commit to DOM for one batch operation
     this.svgRendererInstance.applySizingToRootSvg();
     this.svgRendererInstance.commitElementsToDOM(rootSvgElement);
@@ -114,31 +118,73 @@ export default class ScrollingStaff {
   private renderFirstNoteGroups() {
     const noteLayer = this.svgRendererInstance.getLayerByName("notes");
 
-    this.noteBuffer.forEach(e => {
-      if (e.type === "chord") {
-        const res = this.noteRendererInstance.renderChord(e.notes);
-        res.noteGroup.setAttribute("transform", `translate(${this.noteCursorX}, 0)`);
-        this.noteCursorX += SCROLLING_NOTE_SPACING + res.cursorOffset;
+    // Calculate the cutoff point for visible notes
+    const maxVisibleX = (this.options.width - NOTE_LAYER_START_X) + SPAWN_X_OFFSET;
 
-        this.activeEntries.push({
-          gElement: res.noteGroup,
-          xPos: this.noteCursorX,
-        });
-      }
-      else {
-        const res = this.noteRendererInstance.renderNote(e.notes[0]);
-        res.noteGroup.setAttribute("transform", `translate(${this.noteCursorX}, ${res.noteYPos})`);
-        this.noteCursorX += SCROLLING_NOTE_SPACING;
+    while (this.noteBuffer.length > 0 && this.noteCursorX < maxVisibleX) {
+      const nextEntry = this.noteBuffer[0];
+      const currentX = this.noteCursorX;
 
-        this.activeEntries.push({
-          gElement: res.noteGroup,
-          xPos: this.noteCursorX,
-        });
+      const noteWrapper = this.svgRendererInstance.createGroup("note-wrapper");
+      let rendererReturn: RenderNoteReturn;
+
+      if (nextEntry.type === "chord") {
+        rendererReturn = this.noteRendererInstance.renderChord(nextEntry.notes);
+        rendererReturn.noteGroup.setAttribute("transform", `translate(0, ${rendererReturn.noteYPos})`);
+
+      } else {
+        rendererReturn = this.noteRendererInstance.renderNote(nextEntry.notes[0]);
+        rendererReturn.noteGroup.setAttribute("transform", `translate(0, ${rendererReturn.noteYPos})`);
+
       }
+      this.noteCursorX += SCROLLING_NOTE_SPACING + rendererReturn.cursorOffset;
+
+      noteWrapper.appendChild(rendererReturn.noteGroup);
+      noteWrapper.style.transform = `translate(${currentX}px, 0px)`;
+      noteLayer.appendChild(noteWrapper);
+
+      this.activeEntries.push({
+        noteWrapper: noteWrapper,
+        xPos: currentX,
+      });
+
+      this.noteBuffer.shift();
+    }
+
+    // Removed the lastly applied noteCurorX increment
+    if (this.activeEntries.length > 1) this.noteCursorX -= SCROLLING_NOTE_SPACING * 2;
+  }
+
+  private renderNextNote() {
+    if (this.noteBuffer.length < 1) return;
+
+    const noteLayer = this.svgRendererInstance.getLayerByName("notes");
+    const nextNoteInBuffer = this.noteBuffer[0];
+    const noteWrapper = this.svgRendererInstance.createGroup("note-wrapper");
+
+    if (nextNoteInBuffer.type === "chord") {
+      const res = this.noteRendererInstance.renderChord(nextNoteInBuffer.notes);
+      res.noteGroup.setAttribute("transform", `translate(0, ${res.noteYPos})`);
+      noteWrapper.appendChild(res.noteGroup);
+
+    } else {
+      const res = this.noteRendererInstance.renderNote(nextNoteInBuffer.notes[0]);
+      res.noteGroup.setAttribute("transform", `translate(0, ${res.noteYPos})`);
+      noteWrapper.appendChild(res.noteGroup);
+    };
+
+    // The note cursor at this stage will be placed at the last spawned position
+    const spawnX = this.noteCursorX + SPAWN_X_OFFSET;
+    noteWrapper.style.transform = `translate(${spawnX}px, 0px)`;
+
+    // Add current rendered note to active drawn notes, remove from buffer
+    this.activeEntries.push({
+      noteWrapper: noteWrapper,
+      xPos: spawnX,
     });
-    console.log(this.activeEntries)
+    this.noteBuffer.shift();
 
-    this.svgRendererInstance.commitElementsToDOM(this.activeEntries.map(e => e.gElement), noteLayer);
+    noteLayer.appendChild(noteWrapper);
   }
 
   queueNotes(notes: NoteSequence) {
@@ -157,6 +203,23 @@ export default class ScrollingStaff {
     }
 
     this.renderFirstNoteGroups();
+  }
+
+  advanceNotes() {
+    if (this.activeEntries.length <= 0) return;
+
+    this.activeEntries.forEach(e => {
+      e.xPos -= SCROLLING_NOTE_SPACING;
+      e.noteWrapper.style.transform = `translate(${e.xPos}px, 0px)`;
+    });
+
+    const firstActiveNote = this.activeEntries[0];
+    if (firstActiveNote.xPos <= 0) {
+      const notesLayer = this.svgRendererInstance.getLayerByName("notes");
+      notesLayer.removeChild(firstActiveNote.noteWrapper);
+      this.activeEntries.shift();
+    }
+    this.renderNextNote();
   }
 
   clearAllNotes() {

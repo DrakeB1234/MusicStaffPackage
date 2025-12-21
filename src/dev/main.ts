@@ -2,6 +2,7 @@ import MusicStaff from '../classes/MusicStaff';
 import RhythmStaff from '../classes/RhythmStaff';
 import ScrollingStaff from '../classes/ScrollingStaff';
 import './style.css';
+import '../staff.css';
 
 const grandRoot = document.getElementById("staff-root-grand");
 const trebleRoot = document.getElementById("staff-root-treble");
@@ -100,6 +101,7 @@ const elements = {
   buttonCompare: document.getElementById("button-compare") as HTMLButtonElement,
   buttonResetCompare: document.getElementById("button-reset-compare") as HTMLButtonElement,
   buttonTest: document.getElementById("button-test") as HTMLButtonElement,
+  buttonAdvance: document.getElementById("button-advance") as HTMLButtonElement,
 
   buttonThemeToggle: document.getElementById("button-theme-toggle") as HTMLButtonElement,
 
@@ -179,7 +181,10 @@ function changeStaff(name: string) {
 
 // Event Listeners
 elements.buttonTest?.addEventListener("click", () => {
-  scrollingStaff.queueNotes(["C4", "D4", ["C4", "E#4", "F4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"]]);
+  scrollingStaff.queueNotes(["C4", "D4", ["C4", "E#4", "F4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"]]);
+})
+elements.buttonAdvance?.addEventListener("click", () => {
+  scrollingStaff.advanceNotes();
 })
 
 elements.buttonThemeToggle?.addEventListener("click", () => {

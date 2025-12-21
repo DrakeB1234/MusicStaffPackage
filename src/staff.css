@@ -1,0 +1,4 @@
+/* Applies animation to scrolling notes note-wrappers for animation */
+.scrolling-notes-layer>g.vs-note-wrapper {
+  transition: transform 0.2s ease-in-out;
+}
