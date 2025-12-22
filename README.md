@@ -1,4 +1,4 @@
-<img src="public/vector-score-icon.svg" alt="VectorScore Logo" width="150" height="150" />
+![Alt Text](https://raw.githubusercontent.com/DrakeB1234/VectorScore/master/public/vector-score-icon.svg)
 
 # Vector Score
 
@@ -16,7 +16,7 @@ A lightweight, SVG-based TypeScript library for rendering musical staves, notes,
 ## Installation
 
 ```bash
-npm install DrakeB1234/VectorScore
+npm i vector-score
 ````
 
 ## Development
@@ -70,7 +70,7 @@ staff.drawChord(['C4w', 'E4w', 'G4w']);
 staff.justifyNotes();
 ```
 #### Resulting Staff
-<img src="public/MusicStaffTrebleResult.svg" alt="Resulting Treble Staff" />
+![Alt Text](https://raw.githubusercontent.com/DrakeB1234/VectorScore/master/public/MusicStaffTrebleResult.svg)
 
 ### Grand Staff
 
@@ -90,7 +90,7 @@ grandStaff.drawNote(['G4q', 'E4h', 'C4w', "A3h", "F3h"]);
 grandStaff.drawChord(["G3w", "C4w", "E4w"]);
 ```
 #### Resulting Staff
-<img src="public/MusicStaffGrandResult.svg" alt="Resulting Grand Staff" />
+![Alt Text](https://raw.githubusercontent.com/DrakeB1234/VectorScore/master/public/MusicStaffGrandResult.svg)
 
 ### Rhythm Staff
 
@@ -119,7 +119,7 @@ rhythm.drawNote(['q', 'q']);
 rhythm.incrementCurrentBeatUI();
 ```
 #### Resulting Staff
-<img src="public/RhythmStaffResult.svg" alt="Resulting Rhythm Staff" />
+![Alt Text](https://raw.githubusercontent.com/DrakeB1234/VectorScore/master/public/RhythmStaffResult.svg)
 
 ### Scrolling Staff
 
@@ -162,7 +162,7 @@ scrollingStaff.queueNotes([
 // The button event listener calls 'advanceNotes()' to move the notes over, one step at a time.
 ```
 #### Resulting Staff
-<img src="public/ScrollingStaffResult.webp" alt="Resulting Rhythm Staff" />
+![Alt Text](https://raw.githubusercontent.com/DrakeB1234/VectorScore/master/public/ScrollingStaffResult.webp)
 
 ## Note String Syntax
 

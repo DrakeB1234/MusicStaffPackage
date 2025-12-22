@@ -1,8 +1,17 @@
 {
   "name": "vector-score",
-  "private": true,
   "version": "1.0.0",
+  "license": "MIT",
   "type": "module",
+  "keywords": [
+    "music",
+    "notation",
+    "sheet music",
+    "svg",
+    "typescript",
+    "staff",
+    "rhythm"
+  ],
   "files": [
     "dist"
   ],
