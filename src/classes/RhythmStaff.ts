@@ -51,6 +51,13 @@ export default class RhythmStaff {
   private currentBeatUIElement: SVGRectElement | null = null;
   private currentBeatUIXPos: number = CURRENT_BEAT_UI_START_X_POS;
 
+  /**
+   * Creates an instance of a RhythmStaff, A single staff that will automatically apply positioning of elements based on the duration of a note.
+   *
+   * @param rootElementCtx - The element (div) reference that will append the music staff elements to.
+   * @param options - Optional configuration settings. All config options are in the type RhythmStaffOptions
+   * @throws {Error} - If top number is not 3 or 4 OR if bars count is not between 1 - 3. These are the currently only supported values.
+  */
   constructor(rootElementCtx: HTMLElement, options?: RhythmStaffOptions) {
     this.options = {
       width: 300,
@@ -75,6 +82,17 @@ export default class RhythmStaff {
     });
     const rootSvgElement = this.rendererInstance.rootSvgElement;
 
+    // Determine the time signature, if top number isn't supported throw early
+    let topNumberGlyphName: GlyphNames = "TIME_4";
+    switch (this.options.topNumber) {
+      case 3: topNumberGlyphName = "TIME_3"; break;
+      case 4: topNumberGlyphName = "TIME_4"; break;
+      default:
+        throw new Error(`Time signature ${this.options.topNumber} not supported. Please use either 3 or 4.`);
+    };
+
+    if (this.options.barsCount < 1 || this.options.barsCount > 3) throw new Error(`Bars count ${this.options.barsCount} not supported. Please use 1 - 3`);
+
     // Determine spacing positioning
     if (this.options.spaceAbove) {
       const yOffset = this.options.spaceAbove * (STAFF_LINE_SPACING);
@@ -92,22 +110,13 @@ export default class RhythmStaff {
     const timeSignatureGroup = this.rendererInstance.createGroup("time-signature");
     staffLayer.appendChild(timeSignatureGroup);
     const groupYPos = STAFF_SPACING - TIME_SIGNATURE_HEIGHT;
-
-    let topNumberGlyphName: GlyphNames = "TIME_4";
-    switch (this.options.topNumber) {
-      case 3: topNumberGlyphName = "TIME_3"; break;
-      case 4: topNumberGlyphName = "TIME_4"; break;
-      default:
-        throw new Error(`Time signature ${this.options.topNumber} not supported. Please use either 3 or 4.`);
-    };
-
     this.rendererInstance.drawGlyph(topNumberGlyphName, timeSignatureGroup);
     this.rendererInstance.drawGlyph("TIME_4", timeSignatureGroup, { yOffset: TIME_SIGNATURE_HEIGHT });
     timeSignatureGroup.setAttribute("transform", `translate(0, ${groupYPos})`);
 
     // Total width minus starting size of the notes (distance from time signature)
     let notesLayerWidth = this.options.width - NOTE_LAYER_START_X;
-    // Subtract size of bar spacing
+    // For each bar, remove the padding they take up from the overall width of the staff.
     if (this.options.barsCount > 1) notesLayerWidth -= (this.options.barsCount - 1) * BAR_SPACING;
     // Add padding to the right of the staff
     notesLayerWidth -= STAFF_RIGHT_PADDING;
@@ -115,16 +124,19 @@ export default class RhythmStaff {
     // Draw single staff line and time signature
     this.rendererInstance.drawLine(0, STAFF_SPACING, this.options.width - STAFF_RIGHT_PADDING, STAFF_SPACING, staffLayer);
 
+    // Calculates internal positioning props for ensuring correctly spaced notes based on duration
     this.barSpacing = notesLayerWidth / this.options.barsCount;
     this.quarterNoteSpacing = Math.round(this.barSpacing / this.options.topNumber);
-
     this.maxBeatCount = this.options.barsCount * this.options.topNumber;
 
-    // Draw bar line
-    const barLineStartX = this.barSpacing + NOTE_LAYER_START_X;
+    // Draw bar lines
+    let barLineX = this.barSpacing + NOTE_LAYER_START_X;
     const barLineStartY = STAFF_SPACING / 2;
     const barLineEndY = STAFF_SPACING + barLineStartY;
-    this.rendererInstance.drawLine(barLineStartX, barLineStartY, barLineStartX, barLineEndY, staffLayer);
+    for (let i = 0; i < this.options.barsCount - 1; i++) {
+      this.rendererInstance.drawLine(barLineX, barLineStartY, barLineX, barLineEndY, staffLayer);
+      barLineX += this.barSpacing;
+    };
 
     // Translate entire notes layer to match single line on staff
     this.rendererInstance.getLayerByName("notes").setAttribute("transform", `translate(${NOTE_LAYER_START_X}, ${STAFF_SPACING})`);
@@ -219,6 +231,7 @@ export default class RhythmStaff {
     return null;
   };
 
+  // If the last beat exceeded the remaining value in bar, fill the space with approiate rests
   private createRemainingRests(remainingBeatsInBar: number): SVGGElement[] {
     const restGroups: SVGGElement[] = [];
     let beatsLeft = remainingBeatsInBar;
@@ -264,6 +277,24 @@ export default class RhythmStaff {
     );
   }
 
+  /**
+   * Draws a note duration on the staff.
+   * @param notes - A single string OR array of note strings in the format `[Duration]`.
+   * If an array is passed, it will draw each individual note duration on the staff.
+   * If a duration exceeds the remaining value on the bar, rests will fill the empty space.
+   *
+   * * **Duration**: `w` (whole) `h` (half) `q` (quarter) `e` (eighth)
+   * @returns void
+   * @throws {Error} If a note string is not correct format. If an array was passed, it will still draw whatever correctly formatted notes before it. 
+   * 
+   * * @example
+   * // Draws the specified note durations individually on the staff
+   * drawNote(["q", "q", "q", "q", "w"]);
+   * 
+   * * @example
+   * // Draws the specified single note duration on the staff
+   * drawNote("w");
+  */
   drawNote(notes: string | string[]) {
     const normalizedNotesArray = Array.isArray(notes) ? notes : [notes];
     const notesLayer = this.rendererInstance.getLayerByName("notes");
@@ -310,6 +341,24 @@ export default class RhythmStaff {
     this.rendererInstance.commitElementsToDOM(noteGroups, notesLayer);
   }
 
+  /**
+   * Draws a rest duration on the staff.
+   * @param rests - A single string OR array of rest strings in the format `[Duration]`.
+   * If an array is passed, it will draw each individual rest duration on the staff.
+   * If a duration exceeds the remaining value on the bar, rests will fill the empty space.
+   *
+   * * **Duration**: `w` (whole) `h` (half) `q` (quarter) `e` (eighth)
+   * @returns void
+   * @throws {Error} If a rest string is not correct format. If an array was passed, it will still draw whatever correctly formatted rests before it. 
+   * 
+   * * @example
+   * // Draws the specified rest durations individually on the staff
+   * drawRest(["q", "q", "q", "q", "w"]);
+   * 
+   * * @example
+   * // Draws the specified single rest duration on the staff
+   * drawRest("w");
+  */
   drawRest(rests: string | string[]) {
     const normalizedNotesArray = Array.isArray(rests) ? rests : [rests];
     const notesLayer = this.rendererInstance.getLayerByName("notes");
@@ -336,6 +385,12 @@ export default class RhythmStaff {
 
       this.checkAndCreateNewBar();
 
+      const remainingGroups = this.checkAndFillBarWithRests(beatValue);
+      if (remainingGroups) remainingGroups.forEach(e => {
+        restGroups.push(e);
+        this.noteEntries.push(e);
+      });
+
       this.renderRest(durationString, restGroup);
       restGroup.setAttribute("transform", `translate(${this.noteCursorX}, 0)`);
 
@@ -348,7 +403,23 @@ export default class RhythmStaff {
     this.rendererInstance.commitElementsToDOM(restGroups, notesLayer);
   }
 
-  // Will stop beam early if bar line is reached / if beat count is over max limit
+  /**
+   * Draws a beamed note of specified duration/count on the staff.
+   * Will stop beam early if bar line is reached / if beat count is over max limit
+   * @param note - A duration string of either 'e' (eighth) or 's' (sixth).
+   * @param noteCount - The amount of notes in the beam
+   *
+   * @returns void
+   * @throws {Error} If a rest string is not correct format. If an array was passed, it will still draw whatever correctly formatted rests before it. 
+   * 
+   * * @example
+   * // Draws a 4 beamed eighth note
+   * drawBeamedNotes("e", 4);
+   * 
+   * * @example
+   * // Draws a 8 beamed sixth note
+   * drawBeamedNotes("s", 8);
+  */
   drawBeamedNotes(note: "e" | "s", noteCount: number) {
     if (noteCount < 2) {
       throw new Error("Must provide a value greater than 2 for beamed note.");
@@ -401,6 +472,10 @@ export default class RhythmStaff {
     this.rendererInstance.commitElementsToDOM(beamedGroup, notesLayer);
   }
 
+  /**
+   * Will increment the UI showing the current beat in quarters. Once exceeded, must be reset with `resetCurrentBeatUI()`
+   * @returns void
+  */
   incrementCurrentBeatUI() {
     if (!this.currentBeatUIElement) this.createBeatUIElement();
 
@@ -423,6 +498,10 @@ export default class RhythmStaff {
     this.currentBeatUIElement!.setAttribute("x", this.currentBeatUIXPos.toString());
   }
 
+  /**
+   * Resets the ui showing the current beat value.
+   * @returns void
+  */
   resetCurrentBeatUI() {
     this.currentBeatUICount = 0;
     this.currentBeatUIXPos = CURRENT_BEAT_UI_START_X_POS;
@@ -433,11 +512,24 @@ export default class RhythmStaff {
     }
   };
 
+  /**
+   * Clears staff of notes and resets internal positioning.
+   * @returns void
+  */
   clearAllNotes() {
     this.noteCursorX = 0;
     this.currentBeatCount = 0;
 
     this.rendererInstance.getLayerByName("notes").replaceChildren();
     this.noteEntries = [];
+  }
+
+  /**
+   * Removes the root svg element and cleans up arrays.
+   * @returns void
+  */
+  destroy() {
+    this.noteEntries = [];
+    this.rendererInstance.destroy();
   }
 }

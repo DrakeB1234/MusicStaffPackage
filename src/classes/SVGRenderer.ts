@@ -3,6 +3,7 @@ import { GLPYH_ENTRIES, type GlyphNames } from "../glyphs";
 
 export const SVG_HREF = "http://www.w3.org/2000/svg";
 const GLOBAL_SYMBOL_SCALE = 0.1;
+const MAX_WIDTH_STAFF = 1200;
 
 type SVGRendererOptions = {
   width: number;
@@ -50,6 +51,11 @@ export default class SVGRenderer {
     this.rootElementRef = rootElementCtx;
     this.width = options.width;
     this.scale = options.scale;
+
+    if (this.width > MAX_WIDTH_STAFF) {
+      this.width = MAX_WIDTH_STAFF;
+      console.warn(`Width provided for the staff ${this.width} exceeds the limit ${MAX_WIDTH_STAFF}. Please use this value to fix positioning issues.`);
+    };
 
     this.svgElementRef = document.createElementNS(SVG_HREF, "svg");
     this.svgElementRef.classList.add(`${NAMESPACE}-svg-renderer-root`);

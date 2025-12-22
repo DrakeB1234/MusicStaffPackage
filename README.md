@@ -1,6 +1,4 @@
-<div style="background-color:white; display:flex; justify-content: center; margin-bottom:3rem;">
-<img src="public/vector-score-icon.svg" alt="VectorScore Logo" width="150" height="150" margin-inline="auto" />
-</div>
+<img src="public/vector-score-icon.svg" alt="VectorScore Logo" width="150" height="150" />
 
 # Vector Score
 
@@ -10,6 +8,7 @@ A lightweight, SVG-based TypeScript library for rendering musical staves, notes,
 
 * **Multiple Staff Types**: Supports Treble, Bass, Alto, and Grand staves.
 * **Rhythm Staff**: Dedicated staff for rhythm exercises with customizable time signatures and bar handling.
+* **Scrolling Staff** Staff made to allow for 'endless' style of notes.
 * **SVG Rendering**: Crisp, scalable vector graphics suitable for any screen size.
 * **Flexible Note Input**: Simple string-based syntax for defining notes, chords, and rests.
 * **Interactive Features**: Includes methods for error feedback (highlighting wrong notes) and note justification.
@@ -46,7 +45,7 @@ Create a container element in your HTML where the staff will be rendered.
 
 ### 2. Import and Initialize
 
-#### Standard Music Staff (Treble, Bass, Alto)
+### Standard Music Staff (Treble, Bass, Alto)
 
 ```typescript
 import { MusicStaff } from 'vector-score';
@@ -57,31 +56,43 @@ const staff = new MusicStaff(container, {
   staffType: 'treble', // 'treble', 'bass', 'alto', or 'grand'
   width: 400,
   scale: 1.2,
-  staffColor: 'black',
   spaceBelow: 1
 });
 
 // Draw a C Minor scale (quarter notes)
 // Format: NoteName + Accidental(optional) + Octave + Duration
 staff.drawNote(['C4q', 'D4q', 'Eb4q', 'F4q', 'G4q', 'Ab4q', 'Bb4q', 'C5q']);
-```
 
-#### Grand Staff
+// Draw a C Chord
+staff.drawChord(['C4w', 'E4w', 'G4w']);
+
+// Evenly space all notes on the staff
+staff.justifyNotes();
+```
+#### Resulting Staff
+<img src="public/MusicStaffTrebleResult.svg" alt="Resulting Treble Staff" />
+
+### Grand Staff
 
 ```typescript
 import { MusicStaff } from 'vector-score';
 
 const grandStaff = new MusicStaff(container, {
   staffType: 'grand',
-  width: 500,
-  spaceBelow: 2
+  width: 400,
+  spaceBelow: 2,
+  spaceAbove: 2
 });
 
 // Notes are automatically positioned on the correct stave based on pitch
-grandStaff.drawNote(['C4w', 'A2h', 'F5q']);
-```
+grandStaff.drawNote(['G4q', 'E4h', 'C4w', "A3h", "F3h"]);
 
-#### Rhythm Staff
+grandStaff.drawChord(["G3w", "C4w", "E4w"]);
+```
+#### Resulting Staff
+<img src="public/MusicStaffGrandResult.svg" alt="Resulting Grand Staff" />
+
+### Rhythm Staff
 
 ```typescript
 import { RhythmStaff } from 'vector-score';
@@ -99,8 +110,59 @@ rhythm.drawNote(['q', 'q']); // Duration only
 rhythm.drawRest(['h']);
 
 // Draw beamed note
-rhythm.drawBeamedNote("e", 4); // Draws a beamed note of 4 eighth notes
+rhythm.drawBeamedNotes("e", 4); // Draws a beamed note of 4 eighth notes
+
+// Finish the bar
+rhythm.drawNote(['q', 'q']);
+
+// Increment the UI to show the first beat in the bar
+rhythm.incrementCurrentBeatUI();
 ```
+#### Resulting Staff
+<img src="public/RhythmStaffResult.svg" alt="Resulting Rhythm Staff" />
+
+### Scrolling Staff
+
+```typescript
+import { ScrollingStaff } from 'vector-score';
+
+const scrollingContainer = document.getElementById('scrolling-container');
+
+const scrollingStaff = new ScrollingStaff(scrollingContainer, {
+  width: 400,
+  spaceBelow: 2,
+  spaceAbove: 2,
+  onNotesOut: handleNotesOut, // Connect a handler when notes run out (optional)
+});
+
+// Handler for when notes run out
+function handleNotesOut() {
+  isNotesOut = true;
+}
+
+// ****
+// NOTE CSS SELECTOR FOR NOTES FOR ANIMATION IS
+// .vs-scrolling-notes-layer > g.vs-note-wrapper { transition: transform 0.2s ease-in }
+// ****
+
+// Add notes to the queue
+// 5 single notes, a C chord, 2 more notes, finally a D chord
+scrollingStaff.queueNotes([
+  "C4w",
+  "F4w",
+  "C4w",
+  "B4w",
+  "D4w",
+  ["C4w", "E4w", "G4w"],
+  "B4w",
+  "D4w",
+  ["D4w", "F#4w", "A4w"],
+]);
+
+// The button event listener calls 'advanceNotes()' to move the notes over, one step at a time.
+```
+#### Resulting Staff
+<img src="public/ScrollingStaffResult.webp" alt="Resulting Rhythm Staff" />
 
 ## Note String Syntax
 
@@ -133,17 +195,29 @@ Notes are defined using a specific string format parsed by the library:
 | `justifyNotes()` | Evenly spaces all currently drawn notes across the staff width. |
 | `clearAllNotes()` | Removes all notes from the staff and resets the cursor. |
 | `changeNoteByIndex(note: string, index: number)` | Replaces a note at a specific index with a new note. |
+| `changeChordByIndex(notes: string[], index: number)` | Replaces a chord at a specific index with a new chord. |
+| `destroy()` | Destroys internal arrays and elements |
 
 ### RhythmStaff Class
 
 | Method | Description |
 | :--- | :--- |
-| `drawNote(notes: string \| string[])` | Draws rhythm notes (neutral pitch). |
+| `drawNote(notes: string \| string[])` | Draws rhythm notes. |
 | `drawRest(rests: string \| string[])` | Draws rests. |
 | `drawBeamedNotes(type: 'e'\|'s', count: number)` | Draws a group of beamed eighth or sixteenth notes. |
 | `clearAllNotes()` | Removes all items from the staff. |
 | `incrementCurrentBeatUI()` | Starts the UI for showing the current beat. Connect to a external interval for accurate showing of current beat. |
 | `resetCurrentBeatUI()` | Must be called if current beat goes over the total beats in the bar to reset its state |
+| `destroy()` | Destroys internal arrays and elements |
+
+### ScrollingStaff Class
+
+| Method | Description |
+| :--- | :--- |
+| `queueNotes(notes: (string \| string[])[])` | Queues notes on the staff. ["C4", ["C4", "E4", "G4"], "B4"] |
+| `advanceNotes()` | Advances notes to the next position |
+| `clearAllNote()` | Clears all notes on the staff |
+| `destroy()` | Destroys internal arrays and elements | 
 
 ## Configuration Options
 
@@ -161,3 +235,6 @@ Notes are defined using a specific string format parsed by the library:
 * `barsCount`: Number of measures to draw.
 * `currentBeatUIColor`: CSS color string for current beat UI.
 * *Inherits sizing and color options from MusicStaffOptions.*
+
+### ScrollingStaffOptions
+* same as MusicStaffOptions

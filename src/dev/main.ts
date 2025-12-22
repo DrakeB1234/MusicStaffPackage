@@ -68,7 +68,7 @@ const scrollingStaff = new ScrollingStaff(scrollingRoot, {
   scale: 1.2,
   staffColor: "var(--font-color)",
   staffBackgroundColor: "var(--bg-color)",
-  staffType: "treble",
+  staffType: "grand",
   spaceAbove: 1,
   spaceBelow: 1,
   onNotesOut: onScrollingStaffOut
@@ -81,6 +81,7 @@ const rhythmStaff = new RhythmStaff(rhythmRoot, {
   staffBackgroundColor: "var(--bg-color)",
   currentBeatUIColor: "#24ff7450",
   topNumber: 4,
+  barsCount: 2,
   spaceAbove: 0,
   spaceBelow: 0,
 });
@@ -116,7 +117,7 @@ let selectedStaff: SelectedStaff = {
   name: "grand"
 };
 
-changeStaff("scrolling");
+changeStaff("rhythm");
 
 if (selectedStaff.staff instanceof MusicStaff) {
   // selectedStaff.staff.drawChord(["F#4", "A#4", "C5", "E#5", "G#5", "B#5", "D#6"]);
@@ -185,7 +186,7 @@ function changeStaff(name: string) {
 
 // Event Listeners
 elements.buttonTest?.addEventListener("click", () => {
-  scrollingStaff.queueNotes(["C4", "D4", ["C4", "E#4", "F4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"], "A4", "A4", "A4", "A4", "A4", "A4", "A4"]);
+  scrollingStaff.queueNotes(["C4", "D4", ["C4", "E#4", "F4"], "A3", "B3", "C4", "C4", ["C4", "E#4", "G#4"], "A4", "B4", "C4", "C4", ["C4", "E#4", "G#4"], "A4", "A4", "A4", "A4", "A4", "A4", "A4"]);
 })
 elements.buttonAdvance?.addEventListener("click", () => {
   scrollingStaff.advanceNotes();

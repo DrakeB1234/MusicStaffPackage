@@ -42,6 +42,12 @@ export default class MusicStaff {
   private noteEntries: NoteEntry[] = [];
   private noteCursorX: number = 0;
 
+  /**
+   * Creates an instance of a MusicStaff, A single staff.
+   *
+   * @param rootElementCtx - The element (div) reference that will append the music staff elements to.
+   * @param options - Optional configuration settings. Can adjust staff type (treble, bass, alto, grand), width, scale, spaces above/below, etc. All config options are in the type MusicStaffOptions
+  */
   constructor(rootElementCtx: HTMLElement, options?: MusicStaffOptions) {
     this.options = {
       width: 300,
@@ -106,9 +112,24 @@ export default class MusicStaff {
 
 
   /**
-   * @param {string | string[]} notes - The musical note to be drawn on the staff. Can pass an array for multiple notes at a time.
-   * @description A string representing a single musical note, structured as:
-   * `C#4w` == `<PITCH><OCTAVE><DURATION><MODIFIER>`
+   * Draws a note on the staff.
+   * @param notes - A single string OR array of note strings in the format `[Root][Accidental?][Octave][Duration?]`.
+   * If an array is passed, it will draw each individual note on the staff.
+   *
+   * * **Root**: (A-G)
+   * * **Accidental** (Optional): `#` (sharp) `b` (flat) `n` (natural) `##` (double sharp) or `bb` (double flat).
+   * * **Octave**: The octave number (e.g., `4`).
+   * * **Duration** (Optional): `w` (whole) `h` (half) `q` (quarter) or `e` (eighth). Defaults to `w` if duration is omitted
+   * @returns void
+   * @throws {Error} If a note string is not correct format. If an array was passed, it will still draw whatever correctly formatted notes before it. 
+   * 
+   * * @example
+   * // Draws the specified notes individually on the staff
+   * drawNote(["D4w", "F4w", "A4w", "B#5q", "Ebb4e"]);
+   * 
+   * * @example
+   * // Draws the specified single note on the staff
+   * drawNote("D4w");
   */
   drawNote(notes: string | string[]) {
     // Normalizes input by converting a single string into an array
@@ -145,6 +166,21 @@ export default class MusicStaff {
     this.svgRendererInstance.commitElementsToDOM(noteGroups, notesLayer);
   }
 
+  /**
+   * Draws a chord on the staff.
+   * @param notes - An array of note strings in the format `[Root][Accidental?][Octave][Duration?]`.
+   *
+   * * **Root**: (A-G)
+   * * **Accidental** (Optional): `#` (sharp) `b` (flat) `n` (natural) `##` (double sharp) or `bb` (double flat).
+   * * **Octave**: The octave number (e.g., `4`).
+   * * **Duration** (Optional): `w` (whole) `h` (half) `q` (quarter) or `e` (eighth). Defaults to `w` if duration is omitted
+   * @returns void
+   * @throws {Error} If a note string is not correct format OR if less than one note was provided.
+   * 
+   * * @example
+   * // Draw a D minor chord starting on 4th octave
+   * drawChord(["D4w", "F4w", "A4w"], 0);
+  */
   drawChord(notes: string[]) {
     if (notes.length < 2) throw new Error("Provide more than one note for a chord.");
     const notesLayer = this.svgRendererInstance.getLayerByName("notes");
@@ -169,7 +205,10 @@ export default class MusicStaff {
     this.svgRendererInstance.commitElementsToDOM(res.noteGroup, notesLayer);
   }
 
-  // Gets all current notes on staff and evenly spaces them
+  /**
+   * Evenly spaces out the notes on the staff.
+   * @returns Returns early if no notes are on the staff
+  */
   justifyNotes() {
     const containerWidth = this.options.width - NOTE_LAYER_START_X;
     const notesCount = this.noteEntries.length;
@@ -206,6 +245,10 @@ export default class MusicStaff {
     });
   }
 
+  /**
+   * Clears staff of notes and resets internal positioning.
+   * @returns void
+  */
   clearAllNotes() {
     this.noteCursorX = 0;
 
@@ -213,6 +256,23 @@ export default class MusicStaff {
     this.noteEntries = [];
   }
 
+
+  /**
+   * Changes the note by index to the specified note.
+   * @param notes - A note string in the format `[Root][Accidental?][Octave][Duration?]`.
+   *
+   * * **Root**: (A-G)
+   * * **Accidental** (Optional): `#` (sharp) `b` (flat) `n` (natural) `##` (double sharp) or `bb` (double flat).
+   * * **Octave**: The octave number (e.g., `4`).
+   * * **Duration** (Optional): `w` (whole) `h` (half) `q` (quarter) or `e` (eighth). Defaults to `w` if duration is omitted
+   * @param noteIndex The index of the note that will replaced by the specified note.
+   * @returns void
+   * @throws {Error} If the index provided is out of bounds, or if a note string is not correct format.
+   * 
+   * * @example
+   * // Changes note at pos `0` to a B flat quarter note on the 3rd octave
+   * changeNoteByIndex("Bb3q", 0);
+  */
   changeNoteByIndex(note: string, noteIndex: number) {
     if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
     const noteEntry = this.noteEntries[noteIndex];
@@ -238,6 +298,22 @@ export default class MusicStaff {
     };
   };
 
+  /**
+   * Changes the note by index to the specified chord.
+   * @param notes - An array of note strings in the format `[Root][Accidental?][Octave][Duration?]`.
+   *
+   * * **Root**: (A-G)
+   * * **Accidental** (Optional): `#` (sharp) `b` (flat) `n` (natural) `##` (double sharp) or `bb` (double flat).
+   * * **Octave**: The octave number (e.g., `4`).
+   * * **Duration** (Optional): `w` (whole) `h` (half) `q` (quarter) or `e` (eighth). Defaults to `w` if duration is omitted
+   * @param noteIndex The index of the note that will replaced by the specified chord.
+   * @returns void
+   * @throws {Error} If the index provided is out of bounds, or if a note string is not correct format.
+   * 
+   * * @example
+   * // Changes chord at pos `0` to a C Minor chord
+   * changeChordByIndex(["C4w", "D#4w", "G4w"], 0);
+  */
   changeChordByIndex(notes: string[], chordIndex: number) {
     if (chordIndex >= this.noteEntries.length) throw new Error("Chord index was out of bounds.");
     if (notes.length < 2) throw new Error("Notes provided need to be more than one to be considered a chord.");
@@ -265,13 +341,27 @@ export default class MusicStaff {
     };
   };
 
-  applyClassToNoteByIndex(className: string, noteIndex: number) {
+  /**
+   * Adds a class to the note by the index provided.
+   * @param className The name added to the note
+   * @param noteIndex The index of the note that will have 'className' added to it.
+   * @returns void
+   * @throws {Error} If the index provided is out of bounds
+  */
+  addClassToNoteByIndex(className: string, noteIndex: number) {
     if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
     const noteEntry = this.noteEntries[noteIndex];
 
     noteEntry.gElement.classList.add(className);
   }
 
+  /**
+   * Removes a class to the note by the index provided.
+   * @param className The name removed from the note
+   * @param noteIndex The index of the note that will have 'className' removed from it.
+   * @returns void
+   * @throws {Error} If the index provided is out of bounds
+  */
   removeClassToNoteByIndex(className: string, noteIndex: number) {
     if (noteIndex >= this.noteEntries.length) throw new Error("Note index was out of bounds.");
     const noteEntry = this.noteEntries[noteIndex];
@@ -279,7 +369,12 @@ export default class MusicStaff {
     noteEntry.gElement.classList.remove(className);
   }
 
+  /**
+   * Removes the root svg element and cleans up arrays.
+   * @returns void
+  */
   destroy() {
+    this.noteEntries = [];
     this.svgRendererInstance.destroy();
   }
 }
